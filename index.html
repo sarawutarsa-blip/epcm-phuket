@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glenalmond Phuket · Executive EPCM Control</title>
+  <meta name="description" content="ระบบบริหารและควบคุมโครงการก่อสร้างโรงเรียนนานาชาติ Glenalmond Phuket — โดย West Coast Engineering Co., Ltd.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b2345'/%3E%3Cpath d='M18 15h28v8H27v8h15v8H27v10h19v8H18z' fill='%23c5a869'/%3E%3C/svg%3E">
+  
+  <!-- Modern Executive Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Executive Design System -->
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar" id="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo-wrap">
+          <img class="brand-logo-img" src="assets/glenalmond-phuket-logo.png" alt="Glenalmond Phuket">
+        </div>
+        <div class="brand-badge">
+          <span>EPCM Control</span>
+        </div>
+        <span class="brand-tagline">Glenalmond International School</span>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebarNav">
+        <!-- Rendered dynamically by app.js -->
+      </nav>
+
+      <div class="sidebar-footer">
+        <b>Project Control</b>
+        <span>West Coast Engineering Co., Ltd.</span>
+        <div style="font-size:10.5px;color:#94a3b8;margin-top:4px">Data Date: 12 Nov 2026</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- Top Sticky Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-menu-toggle" id="menuToggle" aria-label="Toggle Navigation">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="project-title-meta">
+            <small>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              PROJECT CONTROL · EPCM
+            </small>
+            <b>Glenalmond Phuket International School</b>
+            <span class="project-contractor-sub">Managed by West Coast Engineering Co., Ltd. · Thalang, Phuket</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="quick-stats-strip">
+            <div class="stat-pill success" title="Overall S-Curve Progress">
+              <span class="live-pulse"></span>
+              <span>S-Curve: <b>93.5%</b></span>
+            </div>
+            <div class="stat-pill gold" title="Current Certified Payment">
+              <span>งบโครงการ: <b>฿316.8M</b></span>
+            </div>
+            <div class="stat-pill primary" title="Total Manpower Onsite">
+              <span>กำลังพล: <b>116 คน</b></span>
+            </div>
+          </div>
+
+          <div class="user-badge">
+            <div style="text-align:right">
+              <b style="font-size:12.5px;display:block;color:var(--navy-850)">Project Director</b>
+              <span style="font-size:11px;color:var(--slate-500)">WCE - EPCM</span>
+            </div>
+            <div class="user-avatar" title="Project Manager">PM</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dynamic Screen Content -->
+      <div class="page-container" id="screen">
+        <!-- Rendered by app.js router -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Project Scripts -->
+  <script src="assets/payment-data.js"></script>
+  <script src="assets/epcm-data.js"></script>
+  <script src="assets/app.js"></script>
+
+  <script>
+    // Mobile Navigation Toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    if (menuToggle && sidebar) {
+      menuToggle.onclick = () => sidebar.classList.toggle('open');
+    }
+  </script>
+</body>
+</html>
