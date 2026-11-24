@@ -294,7 +294,7 @@ function dashboard() {
     ${banner(
       'Executive Dashboard',
       'ภาพรวมการดำเนินงานโครงการ Glenalmond Phuket International School',
-      `<div class="stat-pill success"><span class="live-pulse"></span> ข้อมูลล่าสุด ณ 12/11/2569</div>`
+      `<div class="stat-pill success"><span class="live-pulse"></span> ข้อมูลล่าสุด ณ ${latestMp.thaiDate} (${latestMp.total} คน · ${(latestMp.total * 8).toLocaleString()} MH/วัน)</div>`
     )}
 
     <!-- 4 Main KPI Cards -->
@@ -564,6 +564,10 @@ function contractorContract() {
 function manpower(index = 0) {
   const r = manpowerHistory[index];
   const g = r.groups;
+  const getGroupTotal = group => group ? (group[2] ?? group[1].reduce((a, b) => a + (typeof b[1] === 'number' ? b[1] : 0), 0)) : 0;
+  const mainTotal = getGroupTotal(g.find(x => x[0].includes('สถาปัตย์')));
+  const sysTotal = getGroupTotal(g.find(x => x[0].includes('ระบบ')));
+  const otherTotal = Math.max(0, r.total - mainTotal - sysTotal);
 
   document.getElementById('screen').innerHTML = `
     ${banner(
@@ -587,19 +591,19 @@ function manpower(index = 0) {
 
       <div class="mp-stat-box">
         <span>Main Contractor</span>
-        <strong>${(g.find(x => x[0].includes('สถาปัตย์')) || [0, 0, 0])[2] || 86} <small style="font-size:16px">คน</small></strong>
+        <strong>${mainTotal} <small style="font-size:16px">คน</small></strong>
         <small>ยายบัวการช่าง · งานสถาปัตย์</small>
       </div>
 
       <div class="mp-stat-box">
         <span>Systems Work</span>
-        <strong>${(g.find(x => x[0].includes('ระบบ')) || [0, 0, 0])[2] || 10} <small style="font-size:16px">คน</small></strong>
+        <strong>${sysTotal} <small style="font-size:16px">คน</small></strong>
         <small>ทีมงานระบบ MEP</small>
       </div>
 
       <div class="mp-stat-box">
         <span>Other Teams</span>
-        <strong>${r.total - ((g.find(x => x[0].includes('สถาปัตย์')) || [0, 0, 0])[2] || 86) - ((g.find(x => x[0].includes('ระบบ')) || [0, 0, 0])[2] || 10)} <small style="font-size:16px">คน</small></strong>
+        <strong>${otherTotal} <small style="font-size:16px">คน</small></strong>
         <small>เทวาวณิชกิจ · FirstCon · EXB</small>
       </div>
     </div>
