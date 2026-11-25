@@ -79,7 +79,7 @@ const manpowerGroups=[
 ['ทีม Firstcon งานซ่อมร้าวดาดฟ้า',[['Roof Crack Repair Team (งานซ่อมร้าวดาดฟ้า)',6]]],
 ['ยายบัวการช่าง · งานสถาปัตย์',[['Structural Engineer (วิศวกรโครงสร้าง)',2],['Safety Officer (จป.)',0],['Architect (สถาปนิก)',0],['Foreman (โฟร์แมน)',6],['Office Staff (สำนักงาน)',0],['Concrete Worker (ช่างปูน)',1],['Wall Plaster Team (ช่างฉาบ)',3],['Supervisor (หัวหน้างาน)',3],['General Worker (ช่างทั่วไป)',14],['Laborer (กรรมกร)',12],['Surveyor (เซอร์เวย์)',3],['Scaffolding Team (ชุดตั้งนั่งร้าน)',4],['Driver (คนขับรถ)',3],['Storekeeper (เจ้าหน้าที่สโตร์)',1],['Interior Tile Installation (งานกระเบื้องภายใน)',5],['Exterior Tile Installation (งานกระเบื้องภายนอก)',2],['Painting Team (ช่างสี)',5],['Underground Water Tank Structure',0],['Elevator Work (งานลิฟต์)',4],['Ceiling Work (งานฝ้าเพดาน)',0],['Texture Painting Work (งานสีเทคเจอร์)',0],['Vinyl Tile Work (งานกระเบื้องยาง)',0],['Aluminum Work (งานอลูมิเนียม)',3],['Door Installation (งานติดตั้งประตู)',0],['Underground Tank Repair',0],['Villa Wall Installation',4]]],
 ['ทีมงานระบบ ยายบัวการช่าง',[['MEP Engineer (วิศวกร)',2],['Foreman (โฟร์แมน)',1],['Pipefitter (ช่างประปา)',3],['Electrician (ช่างไฟ)',0],['Fire System Installers (ช่างดับเพลิง)',0],['AC Installation Team (ช่างแอร์)',2],['Storehouse (สโตร์)',0]]]];
-jobs.find(x=>x[1]==='ระบบกำจัดปลวก')[5]=0;jobs.find(x=>x[1]==='Loose Furniture เฟส 1')[5]=0;
+// Jobs index 5 unbilled values already calibrated at declaration
 const manpowerGroups19=[
 ['ทีม EXB งานครัว',[['Kitchen Installation Team (งานครัว)',5]]],
 ['เทวาวณิชกิจ',[['Engineer (วิศวกร)',1],['Surveyor (เซอร์เวย์)',4],['Worker (คนงาน)',2],['Backhoe PC45 (แบคโฮ PC45)',1]]],
