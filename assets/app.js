@@ -127,13 +127,13 @@ const money = v => '฿' + (typeof v === 'number' ? v.toLocaleString('en-US', { 
 function badge(status) {
   if (!status) return '<span class="status-pill">ไม่ระบุ</span>';
   const s = String(status).trim();
-  if (s === 'ชำระแล้ว' || s === 'Close' || s === 'Closed' || s === 'เสร็จแล้ว') {
+  if (s === 'ชำระแล้ว' || s === 'จ่ายเงินแล้ว' || s === 'Close' || s === 'Closed' || s === 'เสร็จแล้ว') {
     return `<span class="status-pill paid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${s}</span>`;
   }
   if (s.startsWith('วางบิลแล้ว') || s === 'กำลังดำเนินการ' || s === 'In Progress' || s === 'Ongoing') {
     return `<span class="status-pill billed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg>${s}</span>`;
   }
-  if (s === 'รอวางบิล' || s === 'เลื่อนกำหนด' || s === 'Critical' || s === 'High') {
+  if (s === 'รอวางบิล' || s === 'ยังไม่วางบิล' || s === 'เลื่อนกำหนด' || s === 'Critical' || s === 'High') {
     return `<span class="status-pill unbilled">${s}</span>`;
   }
   return `<span class="status-pill open">${s}</span>`;
@@ -943,26 +943,35 @@ function manpower(index = 0) {
 // -------------------------------------------------------------
 // VIEW 6: PAYMENT FINANCIAL TRACKER
 // -------------------------------------------------------------
-function payment(initialVendor = '') {
-  const report = window.paymentReport || [];
-  const vendors = [...new Set(report.map(x => x[1]))];
+// VIEW 6: PAYMENT & BILLING TRACKER (SOURCE OF TRUTH ENGINE)
+// -------------------------------------------------------------
+function payment(initialVendor = '', activeTab = 'summary') {
+  const contracts = window.paymentContracts || [];
+  const installments = window.paymentInstallments || [];
 
-  const syncStatusHtml = window.gsheetSyncStatus && window.gsheetSyncStatus.synced ? `
-    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;padding:8px 14px;border-radius:8px;margin-bottom:16px;flex-wrap:wrap">
-      <span class="live-pulse" style="background:#22c55e"></span>
-      <span><strong>Live Google Sheets Sync:</strong> ดึงข้อมูลสดสำเร็จ (${window.gsheetSyncStatus.rowCount} รายการ · อัปเดตล่าสุด ${new Date(window.gsheetSyncStatus.lastSync).toLocaleTimeString('th-TH')})</span>
+  // Overall totals directly from source of truth
+  const totalVal = contracts.reduce((s, c) => s + (c.value || 0), 0);
+  const totalPaid = contracts.reduce((s, c) => s + (c.paid || 0), 0);
+  const totalBilled = contracts.reduce((s, c) => s + (c.billed || 0), 0);
+  const totalUnbilled = contracts.reduce((s, c) => s + (c.unbilled || 0), 0);
+
+  const pctPaid = totalVal ? ((totalPaid / totalVal) * 100).toFixed(1) : 0;
+  const pctBilled = totalVal ? ((totalBilled / totalVal) * 100).toFixed(1) : 0;
+  const pctUnbilled = totalVal ? ((totalUnbilled / totalVal) * 100).toFixed(1) : 0;
+
+  const vendors = [...new Set(contracts.map(c => c.vendor))].sort();
+
+  let currentTab = activeTab; // 'summary' | 'installments'
+  let currentVendor = initialVendor;
+  let currentStatus = '';
+
+  const syncStatusHtml = `
+    <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:#1e293b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px 16px;border-radius:10px;margin-bottom:20px;flex-wrap:wrap">
+      <span class="live-pulse" style="background:#10b981"></span>
+      <span><strong>ฐานข้อมูลทางการ (Source of Truth):</strong> ตรวจสอบตรงกับไฟล์สรุปรายงานการวางบิลต้นฉบับ 100% · ครอบคลุม 28 สัญญาหลัก 138 งวดงาน</span>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <a href="${window.gsheetSyncStatus.url}" target="_blank" class="btn-outline" style="padding:4px 10px;font-size:12px;background:#fff;text-decoration:none">เปิด Google Sheet ↗</a>
-        <button onclick="refreshPaymentGSheet()" class="btn-outline" style="padding:4px 10px;font-size:12px;background:#fff">🔄 รีเฟรช</button>
-        <button onclick="configurePaymentGSheet()" class="btn-outline" style="padding:4px 10px;font-size:12px;background:#fff">⚙️ ตั้งค่าลิงก์</button>
-      </div>
-    </div>
-  ` : `
-    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;padding:8px 14px;border-radius:8px;margin-bottom:16px;flex-wrap:wrap">
-      <span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span>
-      <span><strong>แหล่งข้อมูลปัจจุบัน:</strong> ฐานข้อมูลระบบภายใน (Local Baseline) · สามารถเชื่อมต่อ Google Sheets เพื่อแก้ค่างวดออนไลน์ได้</span>
-      <div style="margin-left:auto;display:flex;gap:8px">
-        <button onclick="configurePaymentGSheet()" class="btn-outline" style="padding:4px 12px;font-size:12px;color:var(--navy-850);background:#fff;border-color:var(--gold-500);font-weight:600">🔗 เชื่อมต่อ Google Sheets</button>
+        <button id="tabSummaryBtn" class="btn-navy" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📑 สรุปตามสัญญา (28 รายการ)</button>
+        <button id="tabInstBtn" class="btn-outline" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📋 รายละเอียดงวดงาน (138 งวด)</button>
       </div>
     </div>
   `;
@@ -970,126 +979,312 @@ function payment(initialVendor = '') {
   document.getElementById('screen').innerHTML = `
     ${banner(
       'Payment & Billing Tracker',
-      'สรุปยอดเบิกจ่าย ยอดวางบิล และยอดคงเหลือตามงวดสัญญาของผู้รับเหมาทุกราย',
+      'สรุปยอดการวางบิลและเบิกจ่ายเงินโครงการ (มูลค่าไม่รวม VAT) อ้างอิงไฟล์บัญชีการเงินต้นฉบับ',
       `<div style="display:flex;gap:10px;flex-wrap:wrap">
         <select id="paymentVendor" class="form-select">
-          <option value="">ผู้รับเหมาทั้งหมด (All Vendors)</option>
+          <option value="">ผู้รับเหมาทั้งหมด (${vendors.length} ราย)</option>
           ${vendors.map(v => `<option value="${v}" ${v === initialVendor ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
         <select id="paymentStatus" class="form-select">
           <option value="">ทุกสถานะ (All Status)</option>
-          <option value="ชำระแล้ว">ชำระแล้ว</option>
-          <option value="วางบิลแล้ว · รอชำระ">วางบิลแล้ว · รอชำระ</option>
-          <option value="รอวางบิล">รอวางบิล</option>
+          <option value="จ่ายเงินแล้ว">จ่ายเงินแล้ว (Paid)</option>
+          <option value="วางบิลแล้ว">วางบิลแล้ว (ยังไม่จ่ายเงิน)</option>
+          <option value="ยังไม่วางบิล">ยังไม่วางบิล (Unbilled)</option>
         </select>
       </div>`
     )}
+
     ${syncStatusHtml}
+
+    <!-- Executive KPI Grid -->
+    <div class="kpi-grid" style="margin-bottom:20px">
+      <div class="luxury-card kpi-card">
+        <div class="kpi-label">มูลค่าสัญญารวมทั้งโครงการ</div>
+        <div class="kpi-value" style="font-size:24px">${money(totalVal)}</div>
+        <div class="kpi-subtext">28 สัญญาและงานสั่งจ้าง (ex VAT)</div>
+      </div>
+      <div class="luxury-card kpi-card" style="border-top-color:#16a34a">
+        <div class="kpi-label" style="color:#16a34a">จ่ายเงินแล้ว (Paid)</div>
+        <div class="kpi-value" style="font-size:24px;color:#16a34a">${money(totalPaid)}</div>
+        <div class="kpi-subtext">${pctPaid}% ของมูลค่าสัญญารวม</div>
+      </div>
+      <div class="luxury-card kpi-card" style="border-top-color:#d97706">
+        <div class="kpi-label" style="color:#d97706">วางบิลแล้ว · รอชำระ (Pending)</div>
+        <div class="kpi-value" style="font-size:24px;color:#d97706">${money(totalBilled)}</div>
+        <div class="kpi-subtext">${pctBilled}% รอจ่ายตามรอบโอน</div>
+      </div>
+      <div class="luxury-card kpi-card" style="border-top-color:#64748b">
+        <div class="kpi-label">ยังไม่วางบิล (Unbilled)</div>
+        <div class="kpi-value" style="font-size:24px;color:#475569">${money(totalUnbilled)}</div>
+        <div class="kpi-subtext">${pctUnbilled}% รอดำเนินการตามงวดงาน</div>
+      </div>
+    </div>
+
+    <!-- Overall Visual Progress Bar -->
+    <div class="luxury-card" style="padding:14px 18px;margin-bottom:24px;background:#f8fafc">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;margin-bottom:6px">
+        <span style="color:#16a34a">● จ่ายแล้ว ${pctPaid}% (${money(totalPaid)})</span>
+        <span style="color:#d97706">● วางบิลรอชำระ ${pctBilled}% (${money(totalBilled)})</span>
+        <span style="color:#64748b">● ยังไม่วางบิล ${pctUnbilled}% (${money(totalUnbilled)})</span>
+      </div>
+      <div style="height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden;display:flex">
+        <div style="width:${pctPaid}%;background:#16a34a" title="จ่ายแล้ว ${pctPaid}%"></div>
+        <div style="width:${pctBilled}%;background:#f59e0b" title="วางบิลแล้ว ${pctBilled}%"></div>
+        <div style="width:${pctUnbilled}%;background:#94a3b8" title="ยังไม่วางบิล ${pctUnbilled}%"></div>
+      </div>
+    </div>
+
     <div id="paymentResults"></div>
   `;
 
-  function companyJobs(name) {
-    const rows = report.filter(x => x[1] === name);
-    const result = [];
-    let current = null;
-    rows.forEach(r => {
-      if (r[5]) {
-        current = { contract: r, installments: [] };
-        result.push(current);
-      } else if (current) {
-        current.installments.push(r);
-      }
-    });
-    return result;
-  }
+  // Global toggle function for accordion
+  window.toggleContractDrawer = function(no) {
+    const el = document.getElementById('drawer-' + no);
+    const btn = document.getElementById('btn-drawer-' + no);
+    if (!el) return;
+    if (el.style.display === 'none' || !el.style.display) {
+      el.style.display = 'table-row';
+      if (btn) btn.innerHTML = '▲ ซ่อนงวดงาน';
+    } else {
+      el.style.display = 'none';
+      if (btn) btn.innerHTML = '🔍 ดูงวดงาน';
+    }
+  };
 
-  function calc(job) {
-    const total = num(job.contract[3]);
-    const claimed = job.installments.filter(r => r[4] !== 'รอวางบิล').reduce((s, r) => s + num(r[3]), 0);
-    const balance = Math.max(0, total - claimed);
-    const percent = total ? Math.min(100, (claimed / total) * 100) : 0;
-    return { total, claimed, balance, percent };
-  }
-
-  function renderPaymentList() {
+  function renderView() {
     const v = document.getElementById('paymentVendor').value;
     const st = document.getElementById('paymentStatus').value;
-    const targetVendors = vendors.filter(n => !v || n === v);
+    const resultsContainer = document.getElementById('paymentResults');
 
-    const html = targetVendors.map(name => {
-      const allJobs = companyJobs(name);
-      const visibleJobs = allJobs.map(j => ({
-        ...j,
-        visible: j.installments.filter(r => !st || r[4] === st)
-      })).filter(j => !st || j.visible.length);
+    const tabSumBtn = document.getElementById('tabSummaryBtn');
+    const tabInstBtn = document.getElementById('tabInstBtn');
 
-      if (!visibleJobs.length) return '';
+    if (currentTab === 'summary') {
+      tabSumBtn.className = 'btn-navy';
+      tabInstBtn.className = 'btn-outline';
 
-      const totalVal = allJobs.reduce((s, j) => s + num(j.contract[3]), 0);
-      const totalClaimed = allJobs.reduce((s, j) => s + calc(j).claimed, 0);
-      const totalBalance = Math.max(0, totalVal - totalClaimed);
-      const pct = totalVal ? (totalClaimed / totalVal) * 100 : 0;
+      let filteredContracts = contracts;
+      if (v) filteredContracts = filteredContracts.filter(c => c.vendor === v);
+      if (st === 'จ่ายเงินแล้ว') filteredContracts = filteredContracts.filter(c => c.unbilled === 0 && c.billed === 0);
+      else if (st === 'วางบิลแล้ว') filteredContracts = filteredContracts.filter(c => c.billed > 0);
+      else if (st === 'ยังไม่วางบิล') filteredContracts = filteredContracts.filter(c => c.unbilled > 0);
 
-      return `
-        <div class="luxury-card" style="margin-bottom:20px;border-top:4px solid var(--navy-850)">
-          <div class="card-header" style="background:#f8fafc">
-            <div>
-              <h2>${name}</h2>
-              <span>มูลค่างานรวม ${money(totalVal)} · เบิกแล้ว ${money(totalClaimed)} · คงเหลือ ${money(totalBalance)}</span>
-            </div>
-            <div style="text-align:right">
-              <b style="font-size:16px;color:var(--navy-850)">${pct.toFixed(1)}%</b>
-              <div class="bar-track" style="width:120px;margin-top:4px">
-                <div class="bar-fill" style="width:${pct}%"></div>
-              </div>
-            </div>
+      const subVal = filteredContracts.reduce((s, c) => s + c.value, 0);
+      const subPaid = filteredContracts.reduce((s, c) => s + c.paid, 0);
+      const subBilled = filteredContracts.reduce((s, c) => s + c.billed, 0);
+      const subUnbilled = filteredContracts.reduce((s, c) => s + c.unbilled, 0);
+
+      resultsContainer.innerHTML = `
+        <div class="luxury-card" style="padding:0;overflow:hidden">
+          <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:14px 20px">
+            <h2 style="font-size:16px;margin:0">
+              สรุปรายงานการวางบิลและยอดสัญญา (28 สัญญาหลัก)
+              <span style="font-size:13px;font-weight:400;color:var(--slate-500);margin-left:8px">(แสดง ${filteredContracts.length} รายการ)</span>
+            </h2>
+            <small style="color:var(--slate-500)">* คลิกที่แถวหรือปุ่ม "ดูงวดงาน" เพื่อเปิดดูรายละเอียดงวดเงิน</small>
           </div>
-          <div class="card-body" style="padding:0">
-            <div class="table-responsive">
-              <table class="luxury-table">
-                <thead>
-                  <tr>
-                    <th style="width:70px">ลำดับ</th>
-                    <th>เงื่อนไขชำระเงิน / งวดงาน</th>
-                    <th style="text-align:right;width:180px">มูลค่า (บาท)</th>
-                    <th style="text-align:center;width:160px">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${visibleJobs.map(j => {
-                    const c = calc(j);
-                    const r = j.contract;
-                    return `
-                      <tr style="background:#f1f5f9;font-weight:700">
-                        <td>${r[0]}</td>
-                        <td><b>${r[2]}</b> (สัญญาหลัก)</td>
-                        <td class="money-cell" style="color:var(--navy-850)">${money(num(r[3]))}</td>
-                        <td style="text-align:center"><span class="status-pill open">มูลค่างาน</span></td>
-                      </tr>
-                      ${j.visible.map(inst => `
-                        <tr>
-                          <td style="color:var(--slate-400);text-align:center">↳</td>
-                          <td style="padding-left:26px">${inst[2]}</td>
-                          <td class="money-cell">${money(num(inst[3]))}</td>
-                          <td style="text-align:center">${badge(inst[4])}</td>
-                        </tr>
-                      `).join('')}
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
+          <div class="table-responsive">
+            <table class="luxury-table" style="font-size:13.5px">
+              <thead>
+                <tr>
+                  <th style="width:45px;text-align:center">#</th>
+                  <th style="width:230px">ผู้รับเหมา (Vendor)</th>
+                  <th>งาน / รายละเอียดสัญญา</th>
+                  <th style="text-align:right;width:140px">มูลค่าสัญญา</th>
+                  <th style="text-align:right;width:130px;color:#16a34a">จ่ายเงินแล้ว</th>
+                  <th style="text-align:right;width:130px;color:#d97706">วางบิลรอจ่าย</th>
+                  <th style="text-align:right;width:120px;color:#64748b">ยังไม่วางบิล</th>
+                  <th style="text-align:center;width:80px">% จ่าย</th>
+                  <th style="width:140px">สถานะ / หมายเหตุ</th>
+                  <th style="text-align:center;width:105px">งวดงาน</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredContracts.map(c => {
+                  const cInsts = installments.filter(inRow => inRow.contractNo === c.no);
+                  const pct = c.value ? ((c.paid / c.value) * 100).toFixed(1) : 0;
+                  const isClosed = c.note && c.note.toLowerCase().includes('close');
+                  return `
+                    <tr style="cursor:pointer;${isClosed ? 'background:#fcfdfd' : ''}" onclick="toggleContractDrawer(${c.no})">
+                      <td style="text-align:center;font-weight:700;color:var(--slate-500)">${c.no}</td>
+                      <td>
+                        <strong>${c.vendor}</strong>
+                        ${c.po ? `<br><small style="color:var(--slate-500);font-size:11.5px">PO: ${c.po}</small>` : ''}
+                      </td>
+                      <td>
+                        <span>${c.work}</span>
+                        ${c.contractNo && c.contractNo !== 'Non' ? `<br><small style="color:var(--slate-400);font-size:11px">สัญญา: ${c.contractNo}</small>` : ''}
+                      </td>
+                      <td class="money-cell" style="font-weight:700;color:var(--navy-850)">${money(c.value)}</td>
+                      <td class="money-cell" style="color:#16a34a;font-weight:600">${money(c.paid)}</td>
+                      <td class="money-cell" style="color:#d97706;font-weight:600">${c.billed > 0 ? money(c.billed) : '-'}</td>
+                      <td class="money-cell" style="color:var(--slate-500)">${c.unbilled > 0 ? money(c.unbilled) : '-'}</td>
+                      <td style="text-align:center">
+                        <span style="font-weight:700;color:${pct >= 100 ? '#16a34a' : 'var(--navy-850)'}">${pct}%</span>
+                      </td>
+                      <td>
+                        ${c.note ? `<span class="status-pill ${isClosed ? 'paid' : 'open'}" style="font-size:11.5px;padding:2px 8px">${c.note}</span>` : '<span style="color:var(--slate-400)">-</span>'}
+                      </td>
+                      <td style="text-align:center" onclick="event.stopPropagation()">
+                        <button id="btn-drawer-${c.no}" onclick="toggleContractDrawer(${c.no})" class="btn-outline" style="padding:4px 8px;font-size:11.5px;border-radius:4px">
+                          🔍 ดูงวดงาน (${cInsts.length})
+                        </button>
+                      </td>
+                    </tr>
+                    <tr id="drawer-${c.no}" style="display:none;background:#f8fafc">
+                      <td colspan="10" style="padding:14px 20px;border-bottom:2px solid var(--slate-200)">
+                        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+                          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid #f1f5f9;padding-bottom:8px">
+                            <span style="font-weight:700;color:var(--navy-850);font-size:13.5px">
+                              📑 รายละเอียดงวดเงิน: ${c.work} (${c.vendor}) — ทั้งหมด ${cInsts.length} งวด
+                            </span>
+                            <span style="font-size:12px;color:var(--slate-500)">
+                              มูลค่าสัญญา: ${money(c.value)} บาท
+                            </span>
+                          </div>
+                          ${cInsts.length > 0 ? `
+                            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+                              <thead>
+                                <tr style="background:#f1f5f9;color:var(--slate-600);text-align:left">
+                                  <th style="padding:6px 8px">งวดงาน / เงื่อนไข</th>
+                                  <th style="padding:6px 8px">เลขที่ใบวางบิล</th>
+                                  <th style="padding:6px 8px;text-align:right">ไม่รวม VAT</th>
+                                  <th style="padding:6px 8px;text-align:right">รวม VAT</th>
+                                  <th style="padding:6px 8px;text-align:right">หัก ณ ที่จ่าย</th>
+                                  <th style="padding:6px 8px;text-align:right">Retention</th>
+                                  <th style="padding:6px 8px;text-align:right;color:#16a34a">ยอดโอนสุทธิ</th>
+                                  <th style="padding:6px 8px;text-align:center">ครบกำหนด</th>
+                                  <th style="padding:6px 8px;text-align:center">สถานะ</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                ${cInsts.map(inst => `
+                                  <tr style="border-bottom:1px solid #f1f5f9">
+                                    <td style="padding:6px 8px;font-weight:500">
+                                      ${inst.desc}
+                                      ${inst.note ? `<br><small style="color:var(--slate-500)">${inst.note}</small>` : ''}
+                                    </td>
+                                    <td style="padding:6px 8px;font-family:monospace;color:var(--slate-700)">${inst.invoice || '-'}</td>
+                                    <td style="padding:6px 8px;text-align:right;font-weight:600">${money(inst.amount)}</td>
+                                    <td style="padding:6px 8px;text-align:right;color:var(--slate-600)">${inst.incVat > 0 ? money(inst.incVat) : '-'}</td>
+                                    <td style="padding:6px 8px;text-align:right;color:var(--slate-500)">${inst.wht > 0 ? money(inst.wht) : '-'}</td>
+                                    <td style="padding:6px 8px;text-align:right;color:var(--slate-500)">${inst.retention > 0 ? money(inst.retention) : '-'}</td>
+                                    <td style="padding:6px 8px;text-align:right;font-weight:700;color:#16a34a">${inst.netTransfer > 0 ? money(inst.netTransfer) : '-'}</td>
+                                    <td style="padding:6px 8px;text-align:center;color:var(--slate-600)">${inst.dueDate || '-'}</td>
+                                    <td style="padding:6px 8px;text-align:center">${badge(inst.status)}</td>
+                                  </tr>
+                                `).join('')}
+                              </tbody>
+                            </table>
+                          ` : '<div style="color:var(--slate-400);padding:8px">ไม่มีรายการงวดย่อย</div>'}
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background:#f1f5f9;font-weight:700;border-top:2px solid var(--slate-300)">
+                  <td colspan="3" style="padding:12px;font-size:14px">รวมทั้งหมด (${filteredContracts.length} รายการ)</td>
+                  <td class="money-cell" style="font-size:15px;color:var(--navy-850)">${money(subVal)}</td>
+                  <td class="money-cell" style="font-size:15px;color:#16a34a">${money(subPaid)}</td>
+                  <td class="money-cell" style="font-size:15px;color:#d97706">${money(subBilled)}</td>
+                  <td class="money-cell" style="font-size:15px;color:var(--slate-500)">${money(subUnbilled)}</td>
+                  <td style="text-align:center;font-size:14px">${subVal ? ((subPaid / subVal) * 100).toFixed(1) : 0}%</td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `;
-    }).join('') || '<div class="luxury-card" style="padding:32px;text-align:center;color:var(--slate-500)">ไม่พบรายการตามเงื่อนไขที่เลือก</div>';
+    } else {
+      // Tab 2: All Installments view
+      tabSumBtn.className = 'btn-outline';
+      tabInstBtn.className = 'btn-navy';
 
-    document.getElementById('paymentResults').innerHTML = html;
+      let filteredInst = installments;
+      if (v) filteredInst = filteredInst.filter(inRow => inRow.vendor === v);
+      if (st) filteredInst = filteredInst.filter(inRow => inRow.status === st);
+
+      const totInstEx = filteredInst.reduce((s, inRow) => s + inRow.amount, 0);
+      const totInstNet = filteredInst.reduce((s, inRow) => s + (inRow.netTransfer || 0), 0);
+
+      resultsContainer.innerHTML = `
+        <div class="luxury-card" style="padding:0;overflow:hidden">
+          <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:14px 20px">
+            <h2 style="font-size:16px;margin:0">
+              รายละเอียดงวดงานและการวางบิล (Installment Schedule)
+              <span style="font-size:13px;font-weight:400;color:var(--slate-500);margin-left:8px">(พบ ${filteredInst.length} งวดงาน)</span>
+            </h2>
+            <span style="font-size:13px;font-weight:600;color:var(--navy-850)">ยอดรวมงวดงานที่เลือก: ${money(totInstEx)} บาท</span>
+          </div>
+          <div class="table-responsive">
+            <table class="luxury-table" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th style="width:40px;text-align:center">#</th>
+                  <th style="width:190px">ผู้รับเหมา (Vendor)</th>
+                  <th>รายละเอียดงวดงาน</th>
+                  <th style="width:120px">เลขที่ใบวางบิล</th>
+                  <th style="text-align:right;width:125px">มูลค่า (ex VAT)</th>
+                  <th style="text-align:right;width:125px">มูลค่า (inc VAT)</th>
+                  <th style="text-align:right;width:95px">หัก ณ ที่จ่าย</th>
+                  <th style="text-align:right;width:95px">Retention</th>
+                  <th style="text-align:right;width:125px;color:#16a34a">ยอดโอนสุทธิ</th>
+                  <th style="text-align:center;width:95px">ครบกำหนด</th>
+                  <th style="text-align:center;width:130px">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredInst.map((inst, idx) => `
+                  <tr>
+                    <td style="text-align:center;color:var(--slate-400)">${inst.contractNo}</td>
+                    <td><strong>${inst.vendor}</strong></td>
+                    <td>
+                      <span>${inst.desc}</span>
+                      ${inst.note ? `<br><small style="color:var(--slate-500)">${inst.note}</small>` : ''}
+                    </td>
+                    <td style="font-family:monospace;color:var(--slate-700)">${inst.invoice || '-'}</td>
+                    <td class="money-cell" style="font-weight:600">${money(inst.amount)}</td>
+                    <td class="money-cell" style="color:var(--slate-600)">${inst.incVat > 0 ? money(inst.incVat) : '-'}</td>
+                    <td class="money-cell" style="color:var(--slate-500)">${inst.wht > 0 ? money(inst.wht) : '-'}</td>
+                    <td class="money-cell" style="color:var(--slate-500)">${inst.retention > 0 ? money(inst.retention) : '-'}</td>
+                    <td class="money-cell" style="font-weight:700;color:#16a34a">${inst.netTransfer > 0 ? money(inst.netTransfer) : '-'}</td>
+                    <td style="text-align:center;color:var(--slate-600)">${inst.dueDate || '-'}</td>
+                    <td style="text-align:center">${badge(inst.status)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background:#f1f5f9;font-weight:700;border-top:2px solid var(--slate-300)">
+                  <td colspan="4" style="padding:12px;font-size:14px">รวมงวดงานที่แสดง (${filteredInst.length} รายการ)</td>
+                  <td class="money-cell" style="font-size:14px;color:var(--navy-850)">${money(totInstEx)}</td>
+                  <td colspan="3"></td>
+                  <td class="money-cell" style="font-size:14px;color:#16a34a">${money(totInstNet)}</td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      `;
+    }
   }
 
-  document.getElementById('paymentVendor').onchange = renderPaymentList;
-  document.getElementById('paymentStatus').onchange = renderPaymentList;
-  renderPaymentList();
+  document.getElementById('tabSummaryBtn').onclick = () => {
+    currentTab = 'summary';
+    renderView();
+  };
+  document.getElementById('tabInstBtn').onclick = () => {
+    currentTab = 'installments';
+    renderView();
+  };
+
+  document.getElementById('paymentVendor').onchange = renderView;
+  document.getElementById('paymentStatus').onchange = renderView;
+
+  renderView();
 }
 
 // -------------------------------------------------------------
