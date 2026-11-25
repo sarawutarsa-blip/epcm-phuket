@@ -1963,14 +1963,16 @@ function meeting(index = 0) {
 // VIEW 9: ACTION TRACKER
 // -------------------------------------------------------------
 function actionTracker() {
-  const delayed = actionItems.filter(x => x[4] > 0).length;
+  const delayed = actionItems.filter(x => x[5] === 'เลื่อนกำหนด').length;
   const active = actionItems.filter(x => x[5] === 'กำลังดำเนินการ').length;
   const done = actionItems.filter(x => x[5] === 'เสร็จแล้ว').length;
+  const latestMeeting = (typeof meetingHistory !== 'undefined' && meetingHistory.length > 0) ? meetingHistory[0] : null;
+  const meetingTag = latestMeeting ? `Weekly Meeting #${latestMeeting.no} (ณ ${latestMeeting.date})` : 'Weekly Meeting #49 (ล่าสุด)';
 
   document.getElementById('screen').innerHTML = `
     ${banner(
       'Action Item Tracker',
-      'รายการติดตามงานเร่งรัดและข้อสั่งการ อ้างอิงบันทึกการประชุม Weekly Meeting #45'
+      `รายการติดตามงานเร่งรัดและข้อสั่งการ อ้างอิงบันทึกการประชุม ${meetingTag}`
     )}
 
     <!-- 4 KPI counters -->
