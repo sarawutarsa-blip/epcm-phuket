@@ -206,7 +206,7 @@ function banner(title, subtitle, actions = '') {
 
 // Contractor Filter Dropdown
 function contractorFilterHtml(id = 'contractorFilter') {
-  const contractors = [...new Set(jobs.map(x => x[0]))];
+  const contractors = [...new Set(jobs.map(x => x[0]))].sort((a, b) => a.localeCompare(b, 'th'));
   return `
     <select id="${id}" class="form-select">
       <option value="">ผู้รับเหมาทั้งหมด (All Contractors)</option>
@@ -215,44 +215,96 @@ function contractorFilterHtml(id = 'contractorFilter') {
   `;
 }
 
-// Jobs Table Renderer
+// Jobs Table Renderer (Grouped & Sorted by Contractor so ผรม. are adjacent and clear)
 function renderJobsTable(data) {
+  if (!data || data.length === 0) {
+    return `<div style="padding:24px;text-align:center;color:var(--slate-400)">ไม่พบรายการงาน</div>`;
+  }
+
+  // 1. Group items by Contractor
+  const groupMap = new Map();
+  data.forEach(item => {
+    const vendor = item[0] || 'ไม่ระบุผู้รับเหมา';
+    if (!groupMap.has(vendor)) groupMap.set(vendor, []);
+    groupMap.get(vendor).push(item);
+  });
+
+  // 2. Sort groups by Contractor Name (Thai locale)
+  const sortedVendors = Array.from(groupMap.keys()).sort((a, b) => a.localeCompare(b, 'th'));
+
+  let rowsHtml = '';
+  sortedVendors.forEach(vendor => {
+    const items = groupMap.get(vendor);
+    const vendorTotal = items.reduce((s, x) => s + (x[2] || 0), 0);
+    const vendorPaid = items.reduce((s, x) => s + (x[3] || 0), 0);
+    const vendorProgress = vendorTotal > 0 ? ((vendorPaid / vendorTotal) * 100).toFixed(1) : '0.0';
+
+    // Group Header Row for this Contractor
+    rowsHtml += `
+      <tr class="vendor-group-header" style="background:#f1f5f9;border-top:2px solid #cbd5e1;border-bottom:1px solid #cbd5e1">
+        <td colspan="5" style="padding:10px 16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:var(--navy-850);color:#fff;font-size:12px;font-weight:700">🏢</span>
+              <b style="color:var(--navy-850);font-size:14px">${vendor}</b>
+              <span style="font-size:11.5px;background:#e2e8f0;color:#334155;padding:2px 8px;border-radius:12px;font-weight:600">${items.length} แพ็กเกจ</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--slate-600)">
+              มูลค่างานรวม: <b style="color:var(--navy-850)">${fmt(vendorTotal)}</b>
+              <span style="margin:0 6px;color:#cbd5e1">|</span>
+              จ่ายแล้วเฉลี่ย: <b style="color:var(--emerald-700)">${vendorProgress}%</b>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    // Items under this contractor
+    items.forEach((x, idx) => {
+      const p = x[6] === 'Close' ? 100 : Math.min(100, ((x[3] + x[4]) / x[2]) * 100);
+      const isSub = items.length > 1;
+      rowsHtml += `
+        <tr class="${x[6] === 'Close' ? 'closed' : ''}" style="${idx === items.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : ''}">
+          <td style="padding-left:24px">
+            <span style="color:${isSub ? 'var(--slate-500)' : 'var(--navy-850)'};font-size:12.5px;display:inline-flex;align-items:center;gap:6px">
+              ${isSub ? `<span style="color:#94a3b8;font-weight:bold">↳ งานที่ ${idx + 1}:</span>` : ''}
+              <b>${x[0]}</b>
+            </span>
+          </td>
+          <td>
+            <button class="btn-outline" style="padding:4px 10px;font-size:12.5px" onclick="jumpToPayment('${x[0]}')">
+              ${x[1]} ↗
+            </button>
+          </td>
+          <td class="money-cell">${fmt(x[2])}</td>
+          <td style="min-width:140px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <b style="font-size:12.5px">${p.toFixed(1)}%</b>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${p}%"></div>
+            </div>
+          </td>
+          <td style="text-align:center">${badge(x[6])}</td>
+        </tr>
+      `;
+    });
+  });
+
   return `
     <div class="table-responsive">
       <table class="luxury-table">
         <thead>
           <tr>
-            <th>ผู้รับเหมา (Contractor)</th>
+            <th style="min-width:220px">ผู้รับเหมา (Contractor)</th>
             <th>ชื่องาน / แพ็กเกจ (Work Package)</th>
-            <th style="text-align:right">มูลค่างาน</th>
-            <th>Progress โดยประมาณ</th>
-            <th style="text-align:center">สถานะ</th>
+            <th style="text-align:right;min-width:130px">มูลค่างาน</th>
+            <th style="min-width:150px">Progress โดยประมาณ</th>
+            <th style="text-align:center;min-width:100px">สถานะ</th>
           </tr>
         </thead>
         <tbody>
-          ${data.map(x => {
-            const p = x[6] === 'Close' ? 100 : Math.min(100, ((x[3] + x[4]) / x[2]) * 100);
-            return `
-              <tr class="${x[6] === 'Close' ? 'closed' : ''}">
-                <td><b style="color:var(--navy-850)">${x[0]}</b></td>
-                <td>
-                  <button class="btn-outline" style="padding:4px 10px;font-size:12.5px" onclick="jumpToPayment('${x[0]}')">
-                    ${x[1]} ↗
-                  </button>
-                </td>
-                <td class="money-cell">${fmt(x[2])}</td>
-                <td style="min-width:140px">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                    <b style="font-size:12.5px">${p.toFixed(1)}%</b>
-                  </div>
-                  <div class="bar-track">
-                    <div class="bar-fill" style="width:${p}%"></div>
-                  </div>
-                </td>
-                <td style="text-align:center">${badge(x[6])}</td>
-              </tr>
-            `;
-          }).join('')}
+          ${rowsHtml}
         </tbody>
       </table>
     </div>
