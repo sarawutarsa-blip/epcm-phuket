@@ -1303,23 +1303,49 @@ function cost() {
   const unbill = jobs.reduce((s, x) => s + x[5], 0);
   const names = [...new Set(jobs.map(x => x[0]))];
 
+  const companySummaries = names.map((name, i) => {
+    const rows = jobs.filter(x => x[0] === name);
+    const cTotal = rows.reduce((s, x) => s + x[2], 0);
+    const cPaid = rows.reduce((s, x) => s + x[3], 0);
+    const cBill = rows.reduce((s, x) => s + x[4], 0);
+    const cUnbill = rows.reduce((s, x) => s + x[5], 0);
+    const cPaidPct = cTotal > 0 ? (cPaid / cTotal) * 100 : 0;
+    const allClosed = rows.every(x => String(x[6]).startsWith('Close'));
+    return {
+      index: i,
+      name,
+      rows,
+      count: rows.length,
+      total: cTotal,
+      paid: cPaid,
+      bill: cBill,
+      unbill: cUnbill,
+      paidPct: cPaidPct,
+      allClosed
+    };
+  });
+
   document.getElementById('screen').innerHTML = `
     ${banner(
       'Cost Summary',
-      'สรุปงบประมาณและมูลค่างาน แยกตามบริษัทผู้รับเหมาและสถานะเบิกจ่าย',
-      contractorFilterHtml('costFilter')
+      'สรุปงบประมาณและมูลค่างาน แยกตามบริษัทผู้รับเหมาและสถานะเบิกจ่าย (จัดระเบียบตารางและคอลัมน์ตรงกัน)',
+      `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="costSearch" class="form-input" placeholder="🔍 ค้นหางาน / บริษัท..." style="max-width:220px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff" />
+        ${contractorFilterHtml('costFilter')}
+      </div>`
     )}
 
-    <div class="kpi-grid">
+    <!-- Top KPI Grid -->
+    <div class="kpi-grid" style="margin-bottom:24px">
       <div class="luxury-card kpi-card">
         <div class="kpi-label">มูลค่างานรวมทั้งโครงการ</div>
         <div class="kpi-value">${fmt(total)}</div>
-        <div class="kpi-subtext">28 แพ็กเกจสัญญา</div>
+        <div class="kpi-subtext">28 แพ็กเกจสัญญา · ${names.length} บริษัท</div>
       </div>
       <div class="luxury-card kpi-card green">
         <div class="kpi-label">ชำระเงินแล้ว (Paid)</div>
         <div class="kpi-value" style="color:var(--emerald-700)">${fmt(paid)}</div>
-        <div class="kpi-subtext positive">${((paid / total) * 100).toFixed(1)}% ของมูลค่างาน</div>
+        <div class="kpi-subtext positive">${((paid / total) * 100).toFixed(1)}% ของมูลค่างานรวม</div>
       </div>
       <div class="luxury-card kpi-card gold">
         <div class="kpi-label">วางบิลแล้ว (Billed)</div>
@@ -1333,60 +1359,212 @@ function cost() {
       </div>
     </div>
 
-    <div id="costCompanyList">
-      ${names.map(name => {
-        const rows = jobs.filter(x => x[0] === name);
-        const subTotal = rows.reduce((s, x) => s + x[2], 0);
+    <!-- Company Rollup Summary Matrix -->
+    <div class="luxury-card" style="margin-bottom:28px">
+      <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div>
+          <h2 style="font-size:15px;color:var(--navy-850);display:flex;align-items:center;gap:8px">
+            <span>📊</span> ตารางสรุปภาพรวมแยกตามบริษัทผู้รับเหมา (${names.length} บริษัท)
+          </h2>
+          <span style="font-size:12px;color:var(--slate-500)">คลิกที่แถวของบริษัทเพื่อเลื่อนลงไปดูรายละเอียดสัญญาทันที</span>
+        </div>
+        <div style="font-size:12px;color:var(--slate-500)">
+          รวมทั้งสิ้น <b>28 สัญญา</b>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-responsive">
+          <table class="cost-summary-rollup-table">
+            <colgroup>
+              <col style="width: 44px;">
+              <col style="width: 25%;">
+              <col style="width: 8%;">
+              <col style="width: 14%;">
+              <col style="width: 14%;">
+              <col style="width: 12%;">
+              <col style="width: 12%;">
+              <col style="width: 11%;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="text-align:center">#</th>
+                <th>บริษัทผู้รับเหมา (Vendor)</th>
+                <th style="text-align:center">สัญญา</th>
+                <th style="text-align:right">มูลค่างานรวม (บาท)</th>
+                <th style="text-align:right">ชำระแล้ว (บาท)</th>
+                <th style="text-align:right">วางบิลรอชำระ (บาท)</th>
+                <th style="text-align:right">คงเหลือตามสัญญา (บาท)</th>
+                <th style="text-align:center">% เบิกจ่าย</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${companySummaries.map((c, i) => `
+                <tr onclick="document.getElementById('comp-card-${i}')?.scrollIntoView({behavior:'smooth',block:'start'})" title="คลิกเพื่อไปที่การ์ดสัญญาของ ${c.name}">
+                  <td style="text-align:center;color:var(--slate-400);font-weight:600">${i + 1}</td>
+                  <td style="font-weight:600;color:var(--navy-850)">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span>${c.allClosed ? '✅' : '🏢'}</span>
+                      <span>${c.name}</span>
+                    </div>
+                  </td>
+                  <td style="text-align:center"><span class="badge badge-slate" style="font-size:11px">${c.count}</span></td>
+                  <td class="money-cell">${fmt(c.total)}</td>
+                  <td class="money-cell" style="color:var(--emerald-700)">${fmt(c.paid)}</td>
+                  <td class="money-cell" style="color:var(--amber-700)">${fmt(c.bill)}</td>
+                  <td class="money-cell" style="color:var(--rose-700)">${fmt(c.unbill)}</td>
+                  <td style="text-align:center">
+                    <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                      <div class="bar-track" style="width:50px;height:6px;background:#e2e8f0;display:inline-block">
+                        <div class="bar-fill" style="width:${Math.min(100, c.paidPct)}%;background:${c.paidPct >= 99.9 ? '#10b981' : '#2563eb'}"></div>
+                      </div>
+                      <b style="font-size:11.5px;color:${c.paidPct >= 99.9 ? 'var(--emerald-700)' : 'var(--navy-850)'}">${c.paidPct.toFixed(0)}%</b>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2" style="color:var(--navy-850)">รวมทั้งโครงการ (Grand Total)</td>
+                <td style="text-align:center;font-weight:700">28</td>
+                <td class="money-cell" style="color:var(--navy-850);font-size:14px">${fmt(total)}</td>
+                <td class="money-cell" style="color:var(--emerald-700);font-size:14px">${fmt(paid)}</td>
+                <td class="money-cell" style="color:var(--amber-700);font-size:14px">${fmt(bill)}</td>
+                <td class="money-cell" style="color:var(--rose-700);font-size:14px">${fmt(unbill)}</td>
+                <td style="text-align:center">
+                  <span class="badge badge-gold" style="font-size:11px;font-weight:700">
+                    ${((paid / total) * 100).toFixed(1)}% จ่ายแล้ว
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
 
-        return `
-          <div class="luxury-card cost-card-item" data-vendor="${name}" style="margin-bottom:16px">
-            <div class="card-header" style="background:#f8fafc">
+    <!-- Company Detail Breakdown Cards (Aligned Columns Across All Tables) -->
+    <div style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <h2 style="font-size:15px;color:var(--navy-850);display:flex;align-items:center;gap:8px">
+        <span>📑</span> รายละเอียดสัญญาแยกตามบริษัท (คอลัมน์และตัวเลขจัดตรงกันทุกแถว)
+      </h2>
+      <span style="font-size:12px;color:var(--slate-500)">จัดระเบียบตารางด้วยสัดส่วนคอลัมน์มาตรฐานเดียวกัน 100%</span>
+    </div>
+
+    <div id="costCompanyList">
+      ${companySummaries.map((c, i) => `
+        <div class="luxury-card cost-card-item" id="comp-card-${i}" data-vendor="${c.name}" style="margin-bottom:20px;border-left:4px solid ${c.allClosed ? '#10b981' : '#1e3a8a'}">
+          <div class="card-header" style="background:#f8fafc;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:20px">${c.allClosed ? '✅' : '🏢'}</span>
               <div>
-                <h2>${name}</h2>
-                <span>${rows.length} แพ็กเกจงาน</span>
+                <h2 style="font-size:15.5px;font-weight:700;color:var(--navy-850);margin:0;display:flex;align-items:center;gap:8px">
+                  ${c.name}
+                  <span class="badge ${c.allClosed ? 'badge-blue' : 'badge-slate'}" style="font-size:11px">
+                    ${c.allClosed ? 'ปิดสัญญาครบแล้ว' : 'สัญญาเปิดดำเนินการ'}
+                  </span>
+                </h2>
+                <div style="font-size:12px;color:var(--slate-500);margin-top:2px">
+                  สัญญา: <b>${c.count} แพ็กเกจ</b> · เบิกจ่ายแล้ว: <b>${c.paidPct.toFixed(1)}%</b>
+                </div>
               </div>
-              <b class="money-cell" style="font-size:16px;color:var(--navy-850)">${fmt(subTotal)}</b>
             </div>
-            <div class="card-body" style="padding:0">
-              <div class="table-responsive">
-                <table class="luxury-table">
-                  <thead>
-                    <tr>
-                      <th>งาน</th>
-                      <th style="text-align:right">มูลค่างาน</th>
-                      <th style="text-align:right">ชำระแล้ว</th>
-                      <th style="text-align:right">รอชำระ</th>
-                      <th style="text-align:right">คงเหลือ</th>
-                      <th style="text-align:center">สถานะ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows.map(r => `
-                      <tr>
-                        <td><b>${r[1]}</b></td>
-                        <td class="money-cell">${fmt(r[2])}</td>
-                        <td class="money-cell" style="color:var(--emerald-700)">${fmt(r[3])}</td>
-                        <td class="money-cell" style="color:var(--amber-700)">${fmt(r[4])}</td>
-                        <td class="money-cell" style="color:var(--rose-700)">${fmt(r[5])}</td>
-                        <td style="text-align:center">${badge(r[6])}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
+            <div style="display:flex;align-items:center;gap:16px">
+              <div style="text-align:right">
+                <div style="font-size:10.5px;color:var(--slate-500);text-transform:uppercase;font-weight:600">มูลค่างานรวม</div>
+                <div class="money-cell" style="font-size:16px;color:var(--navy-850)">${fmt(c.total)}</div>
+              </div>
+              <div style="width:100px">
+                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+                  <span style="color:var(--slate-500)">จ่ายแล้ว</span>
+                  <b style="color:${c.paidPct >= 99.9 ? 'var(--emerald-700)' : 'var(--navy-850)'}">${c.paidPct.toFixed(0)}%</b>
+                </div>
+                <div class="bar-track" style="height:6px;background:#e2e8f0">
+                  <div class="bar-fill" style="width:${Math.min(100, c.paidPct)}%;background:${c.paidPct >= 99.9 ? '#10b981' : '#2563eb'}"></div>
+                </div>
               </div>
             </div>
           </div>
-        `;
-      }).join('')}
+          <div class="card-body" style="padding:0">
+            <div class="table-responsive">
+              <table class="cost-table">
+                <colgroup>
+                  <col style="width: 32%;">
+                  <col style="width: 15%;">
+                  <col style="width: 14%;">
+                  <col style="width: 13%;">
+                  <col style="width: 13%;">
+                  <col style="width: 13%;">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style="width:32%">แพ็กเกจงาน / สัญญา</th>
+                    <th style="width:15%;text-align:right">มูลค่างานสัญญา (บาท)</th>
+                    <th style="width:14%;text-align:right">ชำระแล้ว (บาท)</th>
+                    <th style="width:13%;text-align:right">วางบิลรอชำระ (บาท)</th>
+                    <th style="width:13%;text-align:right">คงเหลือตามสัญญา (บาท)</th>
+                    <th style="width:13%;text-align:center">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${c.rows.map(r => `
+                    <tr class="${String(r[6]).startsWith('Close') ? 'closed' : ''}">
+                      <td style="font-weight:600;color:var(--slate-800)">
+                        <div style="display:flex;align-items:flex-start;gap:6px">
+                          <span style="color:var(--slate-400);line-height:1.2">▪</span>
+                          <span>${r[1]}</span>
+                        </div>
+                      </td>
+                      <td class="money-cell">${fmt(r[2])}</td>
+                      <td class="money-cell" style="color:var(--emerald-700)">${fmt(r[3])}</td>
+                      <td class="money-cell" style="color:var(--amber-700)">${fmt(r[4])}</td>
+                      <td class="money-cell" style="color:var(--rose-700)">${fmt(r[5])}</td>
+                      <td style="text-align:center">${badge(r[6])}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+                <tfoot>
+                  <tr style="background:#f8fafc;font-weight:700">
+                    <td style="color:var(--navy-850);font-weight:700">
+                      รวมของบริษัท (${c.rows.length} สัญญา)
+                    </td>
+                    <td class="money-cell" style="color:var(--navy-850);font-size:13.5px">${fmt(c.total)}</td>
+                    <td class="money-cell" style="color:var(--emerald-700);font-size:13.5px">${fmt(c.paid)}</td>
+                    <td class="money-cell" style="color:var(--amber-700);font-size:13.5px">${fmt(c.bill)}</td>
+                    <td class="money-cell" style="color:var(--rose-700);font-size:13.5px">${fmt(c.unbill)}</td>
+                    <td style="text-align:center">
+                      <span class="badge ${c.paidPct >= 99.9 ? 'badge-blue' : 'badge-slate'}" style="font-size:11px;padding:3px 8px">
+                        จ่ายแล้ว ${c.paidPct.toFixed(1)}%
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      `).join('')}
     </div>
   `;
 
-  document.getElementById('costFilter').onchange = e => {
-    const val = e.target.value;
+  const costFilter = document.getElementById('costFilter');
+  const costSearch = document.getElementById('costSearch');
+
+  function filterCostCards() {
+    const val = (costFilter?.value || '').trim();
+    const query = (costSearch?.value || '').trim().toLowerCase();
+
     document.querySelectorAll('.cost-card-item').forEach(el => {
-      el.style.display = !val || el.dataset.vendor === val ? 'block' : 'none';
+      const vendor = el.dataset.vendor || '';
+      const text = el.innerText.toLowerCase();
+      const matchVendor = !val || vendor === val;
+      const matchQuery = !query || text.includes(query);
+      el.style.display = matchVendor && matchQuery ? 'block' : 'none';
     });
-  };
+  }
+
+  if (costFilter) costFilter.onchange = filterCostCards;
+  if (costSearch) costSearch.oninput = filterCostCards;
 }
 
 // -------------------------------------------------------------

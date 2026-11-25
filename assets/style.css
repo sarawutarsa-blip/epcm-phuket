@@ -551,6 +551,81 @@ body {
   background-color: #fafdfb;
 }
 
+/* Cost Summary Dedicated Table Styles */
+.cost-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+.cost-table th {
+  background: #f1f5f9;
+  color: var(--slate-700);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--slate-300);
+}
+.cost-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--slate-200);
+  font-size: 13px;
+  color: var(--slate-800);
+  vertical-align: middle;
+}
+.cost-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+.cost-table tbody tr.closed {
+  background-color: #fafdfb;
+}
+.cost-table tfoot td {
+  padding: 11px 14px;
+  border-top: 2px solid var(--slate-300);
+  border-bottom: none;
+}
+
+/* Cost Summary Rollup Matrix Table */
+.cost-summary-rollup-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 880px;
+}
+.cost-summary-rollup-table th {
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 11px 12px;
+  border-bottom: 1px solid #020617;
+}
+.cost-summary-rollup-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.cost-summary-rollup-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+.cost-summary-rollup-table tbody tr:hover {
+  background-color: #eff6ff !important;
+  cursor: pointer;
+}
+.cost-summary-rollup-table tfoot tr {
+  background: #f8fafc;
+  border-top: 2px solid #0f172a;
+}
+.cost-summary-rollup-table tfoot td {
+  padding: 12px;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
 .money-cell {
   text-align: right;
   font-variant-numeric: tabular-nums;
