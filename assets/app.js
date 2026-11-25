@@ -775,10 +775,6 @@ function scurve() {
       'Project S-Curve Performance',
       'รายงานกราฟแสดงผลความก้าวหน้าโครงการ Glenalmond Phuket International School รายสัปดาห์ (อ้างอิง S-Curve #7 · Gantt 45 รายการ)',
       `<div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn-gold" href="assets/S-Curve_International_School_Phuket_7.xlsx" download>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          📥 ดาวน์โหลด Excel (S-Curve #7)
-        </a>
         <a class="btn-navy" href="assets/S-Curve_International_School_Phuket_7.pdf" target="_blank" rel="noopener">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           📄 เปิดรายงาน PDF (S-Curve #7) ↗
