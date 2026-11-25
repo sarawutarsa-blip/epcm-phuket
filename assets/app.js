@@ -976,7 +976,9 @@ function payment(initialVendor = '', activeTab = 'summary') {
     <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:#1e293b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px 16px;border-radius:10px;margin-bottom:20px;flex-wrap:wrap">
       <span class="live-pulse" style="background:#10b981"></span>
       <span><strong>ฐานข้อมูลทางการ (Source of Truth):</strong> ตรวจสอบตรงกับไฟล์สรุปรายงานการวางบิลต้นฉบับ 100% · ครอบคลุม 28 สัญญาหลัก 138 งวดงาน</span>
-      <div style="margin-left:auto;display:flex;gap:8px">
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <a class="btn-gold" style="padding:6px 12px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" href="${window.GOOGLE_SHEETS_PAYMENT_URL}" target="_blank" rel="noopener">📊 เปิด Google Sheets ↗</a>
+        <a class="btn-outline" style="padding:6px 12px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" href="assets/Glenalmond_Phuket_Payment_Tracker.xlsx" download>📥 ดาวน์โหลด Excel</a>
         <button id="tabSummaryBtn" class="btn-navy" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📑 สรุปตามสัญญา (28 รายการ)</button>
         <button id="tabInstBtn" class="btn-outline" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📋 รายละเอียดงวดงาน (138 งวด)</button>
       </div>
