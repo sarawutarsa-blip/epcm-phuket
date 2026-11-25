@@ -115,6 +115,55 @@ async function refreshPaymentGSheet() {
   }
 }
 
+// EPCM Work Status Google Sheets Sync
+window.GOOGLE_SHEETS_WORK_STATUS_URL = 'https://docs.google.com/spreadsheets/d/1TVDStEnoR6Qd7sdJfyisAC9JET7Bju9-KZymma5c43g/edit';
+window.liveEpcmWorkItems = null;
+
+async function syncEpcmWorkStatusFromGoogleSheet() {
+  const sheetId = '1TVDStEnoR6Qd7sdJfyisAC9JET7Bju9-KZymma5c43g';
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=EPCM+Work+Status`;
+  try {
+    const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = parseGSheetCSV(text);
+    if (rows.length < 2) return false;
+
+    const parsed = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const no = (r[0] || '').trim();
+      const cat = (r[1] || '').trim();
+      let task = (r[2] || '').trim();
+      const leader = (r[3] || '').trim();
+      const support = (r[4] || '').trim();
+      const priority = (r[5] || '').trim();
+      const status = (r[6] || '').trim();
+      const dueDate = (r[7] || '').trim();
+      const pctStr = (r[8] || '').trim().replace('%', '');
+      const pct = pctStr !== '' && !isNaN(pctStr) ? Math.round(parseFloat(pctStr) > 1 ? parseFloat(pctStr) : parseFloat(pctStr) * 100) : null;
+      let remark = (r[9] || '').trim();
+      if (dueDate && !remark) remark = `Due: ${dueDate}`;
+
+      if (!no && !cat && !task && !leader && !status) continue;
+      if (!task && cat) task = cat;
+      parsed.push([no, cat, task, leader, support, priority, status, pct, remark]);
+    }
+    if (parsed.length > 0) {
+      window.liveEpcmWorkItems = parsed;
+      return true;
+    }
+  } catch (err) {
+    console.warn('Google Sheets EPCM Work Status sync notice (using local epcm-data.js):', err.message);
+  }
+  return false;
+}
+
+async function refreshEpcmWorkStatus() {
+  const ok = await syncEpcmWorkStatusFromGoogleSheet();
+  epcmWorkStatus();
+}
+
 
 // Glenalmond Phuket EPCM Control — Application Logic & View Controller
 
@@ -2072,15 +2121,38 @@ function monthlyReport() {
 // VIEW 11: EPCM WORK STATUS
 // -------------------------------------------------------------
 function epcmWorkStatus() {
-  const leaderClass = n => n === 'Petch' ? 'leader-petch' : n === 'Boss' ? 'leader-boss' : n === 'Kreng' ? 'leader-kreng' : '';
-  const active = epcmWorkItems.filter(x => x[6] === 'In Progress' || x[6] === 'Ongoing').length;
-  const waiting = epcmWorkItems.filter(x => x[6] === 'Waiting Contractor').length;
-  const closed = epcmWorkItems.filter(x => x[6] === 'Closed').length;
+  const leaderClass = n => (n === 'Petch') ? 'leader-petch' : (n === 'Boss' || n === 'VEE') ? 'leader-boss' : (n === 'Kreng') ? 'leader-kreng' : '';
+  const items = window.liveEpcmWorkItems || epcmWorkItems;
+  const active = items.filter(x => x[6] === 'In Progress' || x[6] === 'Ongoing').length;
+  const waiting = items.filter(x => x[6] === 'Waiting Contractor').length;
+  const closed = items.filter(x => x[6] === 'Closed' || x[6] === 'เสร็จแล้ว').length;
+
+  if (!window.liveEpcmWorkItems && !window._epcmSyncAttempted) {
+    window._epcmSyncAttempted = true;
+    syncEpcmWorkStatusFromGoogleSheet().then(ok => {
+      if (ok) epcmWorkStatus();
+    });
+  }
+
+  const actions = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <a class="btn-navy" href="${window.GOOGLE_SHEETS_WORK_STATUS_URL}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px">
+        <span>📊</span> เปิดแก้ไขบน Google Sheet ↗
+      </a>
+      <a class="btn-gold" href="assets/EPCM_Work_Status.xlsx" download style="display:inline-flex;align-items:center;gap:6px">
+        <span>📥</span> ดาวน์โหลด Excel
+      </a>
+      <button class="btn-outline" onclick="refreshEpcmWorkStatus()" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;font-size:13px;border-radius:8px">
+        <span>🔄</span> รีเฟรชข้อมูล
+      </button>
+    </div>
+  `;
 
   document.getElementById('screen').innerHTML = `
     ${banner(
       'EPCM Work Status',
-      'สถานะการควบคุมงานหลัก 11 หมวด และทีมงานผู้รับผิดชอบ (Petch, Boss, Kreng)'
+      'สถานะการควบคุมงานหลัก 11 หมวด และทีมงานผู้รับผิดชอบ (Petch, Boss, Kreng) เชื่อมต่อ Google Sheet เรียบร้อย',
+      actions
     )}
 
     <div class="action-kpi-row">
@@ -2119,7 +2191,7 @@ function epcmWorkStatus() {
               </tr>
             </thead>
             <tbody>
-              ${epcmWorkItems.map(row => {
+              ${items.map(row => {
                 const isGroup = row[0] && row[2] && !row[3] && !row[5] && !row[6];
                 if (isGroup) {
                   return `
