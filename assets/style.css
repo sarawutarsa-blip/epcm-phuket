@@ -556,7 +556,16 @@ body {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
-  min-width: 700px;
+  box-sizing: border-box;
+}
+.cost-table th,
+.cost-table td {
+  box-sizing: border-box;
+}
+@media (min-width: 1024px) {
+  .cost-card-item .table-responsive {
+    overflow-x: hidden;
+  }
 }
 .cost-table th {
   background: #f1f5f9;
