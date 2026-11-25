@@ -556,7 +556,7 @@ body {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
-  min-width: 800px;
+  min-width: 700px;
 }
 .cost-table th {
   background: #f1f5f9;

@@ -127,8 +127,9 @@ const money = v => '฿' + (typeof v === 'number' ? v.toLocaleString('en-US', { 
 function badge(status) {
   if (!status) return '<span class="status-pill">ไม่ระบุ</span>';
   const s = String(status).trim();
-  if (s === 'ชำระแล้ว' || s === 'จ่ายเงินแล้ว' || s === 'Close' || s === 'Closed' || s === 'เสร็จแล้ว') {
-    return `<span class="status-pill paid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${s}</span>`;
+  if (s.startsWith('Close') || s === 'Closed' || s === 'ชำระแล้ว' || s === 'จ่ายเงินแล้ว' || s === 'เสร็จแล้ว') {
+    const label = s.includes('เรียกเก็บตามจริง') ? 'Close (ตามจริง)' : s;
+    return `<span class="status-pill paid" title="${s}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${label}</span>`;
   }
   if (s.startsWith('วางบิลแล้ว') || s === 'กำลังดำเนินการ' || s === 'In Progress' || s === 'Ongoing') {
     return `<span class="status-pill billed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg>${s}</span>`;
@@ -1552,13 +1553,25 @@ function cost() {
 
   function filterCostCards() {
     const val = (costFilter?.value || '').trim();
-    const query = (costSearch?.value || '').trim().toLowerCase();
+    let query = (costSearch?.value || '').trim().toLowerCase();
+
+    // Vendor aliases
+    const aliases = {
+      'wce': 'west coast',
+      'ybt': 'ยายบัว',
+      'tve': 'เทวา',
+      'ausy': 'ออสซี่',
+      'ssi': 'ssi building',
+      'sf': 'เอส.เอฟ',
+      'xbig': 'เอ๊กซ์ตร้า'
+    };
+    if (aliases[query]) query = aliases[query];
 
     document.querySelectorAll('.cost-card-item').forEach(el => {
-      const vendor = el.dataset.vendor || '';
+      const vendor = (el.dataset.vendor || '').toLowerCase();
       const text = el.innerText.toLowerCase();
-      const matchVendor = !val || vendor === val;
-      const matchQuery = !query || text.includes(query);
+      const matchVendor = !val || vendor === val.toLowerCase();
+      const matchQuery = !query || text.includes(query) || vendor.includes(query);
       el.style.display = matchVendor && matchQuery ? 'block' : 'none';
     });
   }
