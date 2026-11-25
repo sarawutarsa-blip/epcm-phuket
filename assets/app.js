@@ -2044,6 +2044,13 @@ function filterGlobal(term) {
 
 // Bootstrap
 window.addEventListener('DOMContentLoaded', async () => {
+  if (typeof manpowerHistory !== 'undefined' && manpowerHistory.length > 0) {
+    const latest = manpowerHistory[0];
+    const topPill = document.getElementById('topManpowerPill');
+    if (topPill) topPill.innerHTML = `กำลังพล: <b>${latest.total} คน</b>`;
+    const sbDate = document.getElementById('sidebarDataDate');
+    if (sbDate) sbDate.innerText = `Data Date: ${latest.date}`;
+  }
   initNav();
   dashboard();
   if (localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL) {
