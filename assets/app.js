@@ -677,8 +677,9 @@ function dashboard() {
       </div>
     </div>
 
-    <!-- 7-Day Manpower Proportion Chart -->
+    <!-- Manpower Charts: Historical Trend & 7-Day Proportion -->
     ${renderManpowerTrendChart()}
+    ${renderManpowerBarChart(true)}
     
 
     <!-- Ongoing Work Packages Table -->
@@ -894,8 +895,9 @@ function manpower(index = 0) {
     <!-- Daily Manpower Trend Curve -->
     
 
-    <!-- 7-Day Stacked Bar Chart -->
+    <!-- Manpower Charts: Historical Trend & 7-Day Proportion -->
     ${renderManpowerTrendChart()}
+    ${renderManpowerBarChart(true)}
     
 
     <!-- Detailed breakdown cards -->
