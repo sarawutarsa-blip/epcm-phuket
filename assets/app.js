@@ -1,3 +1,121 @@
+﻿// =============================================================
+// GOOGLE SHEETS LIVE SYNC MODULE
+// =============================================================
+window.gsheetSyncStatus = window.gsheetSyncStatus || null;
+
+function parseGSheetCSV(text) {
+  const lines = [];
+  let row = [''];
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push('');
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && next === '\n') i++;
+      lines.push(row);
+      row = [''];
+    } else {
+      row[row.length - 1] += c;
+    }
+  }
+  if (row.length > 1 || row[0] !== '') lines.push(row);
+  return lines;
+}
+
+async function syncPaymentFromGoogleSheet(customUrl = null) {
+  const targetUrl = customUrl || localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL || '';
+  if (!targetUrl) return false;
+
+  const match = targetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  const sheetId = match ? match[1] : targetUrl.trim();
+  if (!sheetId) return false;
+
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+  try {
+    const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const rows = parseGSheetCSV(text);
+    if (rows.length < 2) throw new Error('Data rows empty');
+
+    const dataRows = rows.slice(1).filter(r => r.length >= 4 && r[1] && r[1].trim());
+    if (dataRows.length === 0) throw new Error('No valid rows found');
+
+    const newReport = dataRows.map(r => [
+      r[0] ? r[0].trim() : '',
+      r[1] ? r[1].trim() : '',
+      r[2] ? r[2].trim() : '',
+      r[3] ? r[3].trim() : '0',
+      r[4] ? r[4].trim() : '',
+      parseInt(r[5]) || 0
+    ]);
+
+    window.paymentReport = newReport;
+    window.gsheetSyncStatus = {
+      synced: true,
+      lastSync: new Date(),
+      rowCount: newReport.length,
+      url: targetUrl.startsWith('http') ? targetUrl : `https://docs.google.com/spreadsheets/d/${sheetId}/edit`,
+      sheetId: sheetId
+    };
+    return true;
+  } catch (err) {
+    console.warn('Google Sheets sync notice (using local payment-data.js):', err.message);
+    window.gsheetSyncStatus = {
+      synced: false,
+      error: err.message,
+      url: targetUrl
+    };
+    return false;
+  }
+}
+
+async function configurePaymentGSheet() {
+  const current = localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL || '';
+  const input = prompt(
+    "กรอกลิงก์ Google Sheet ที่แชร์แบบ 'ทุกคนที่มีลิงก์ดูได้ (Anyone with the link can view)':\n\n(หากต้องการยกเลิกการเชื่อมต่อ ให้ลบข้อความออกทั้งหมดแล้วกด OK เพื่อกลับไปใช้ข้อมูล Local)",
+    current
+  );
+  if (input === null) return;
+
+  const trimmed = input.trim();
+  if (!trimmed) {
+    localStorage.removeItem('epcm_gsheet_payment_url');
+    window.gsheetSyncStatus = null;
+    alert("ยกเลิกการเชื่อมต่อ Google Sheets แล้ว กลับไปใช้ข้อมูลภายใน (Local)");
+    payment();
+    return;
+  }
+
+  localStorage.setItem('epcm_gsheet_payment_url', trimmed);
+  const ok = await syncPaymentFromGoogleSheet(trimmed);
+  if (ok) {
+    alert("✅ เชื่อมต่อและดึงข้อมูลจาก Google Sheets สำเร็จเรียบร้อย!");
+    payment();
+  } else {
+    alert("⚠️ ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบว่าใน Google Sheets ตั้งค่า Share เป็น 'Anyone with the link can view' แล้วหรือไม่");
+  }
+}
+
+async function refreshPaymentGSheet() {
+  const ok = await syncPaymentFromGoogleSheet();
+  if (ok) {
+    payment();
+  } else {
+    alert("ไม่สามารถรีเฟรชข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือลิงก์ Google Sheet");
+  }
+}
+
+
 // Glenalmond Phuket EPCM Control — Application Logic & View Controller
 
 // Formatters
@@ -658,6 +776,26 @@ function payment(initialVendor = '') {
   const report = window.paymentReport || [];
   const vendors = [...new Set(report.map(x => x[1]))];
 
+  const syncStatusHtml = window.gsheetSyncStatus && window.gsheetSyncStatus.synced ? `
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;padding:8px 14px;border-radius:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span class="live-pulse" style="background:#22c55e"></span>
+      <span><strong>Live Google Sheets Sync:</strong> ดึงข้อมูลสดสำเร็จ (${window.gsheetSyncStatus.rowCount} รายการ · อัปเดตล่าสุด ${new Date(window.gsheetSyncStatus.lastSync).toLocaleTimeString('th-TH')})</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <a href="${window.gsheetSyncStatus.url}" target="_blank" class="btn-outline" style="padding:4px 10px;font-size:12px;background:#fff;text-decoration:none">เปิด Google Sheet ↗</a>
+        <button onclick="refreshPaymentGSheet()" class="btn-outline" style="padding:4px 10px;font-size:12px;background:#fff">🔄 รีเฟรช</button>
+        <button onclick="configurePaymentGSheet()" class="btn-outline" style="padding:4px 10px;font-size:12px;background:#fff">⚙️ ตั้งค่าลิงก์</button>
+      </div>
+    </div>
+  ` : `
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;padding:8px 14px;border-radius:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span>
+      <span><strong>แหล่งข้อมูลปัจจุบัน:</strong> ฐานข้อมูลระบบภายใน (Local Baseline) · สามารถเชื่อมต่อ Google Sheets เพื่อแก้ค่างวดออนไลน์ได้</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button onclick="configurePaymentGSheet()" class="btn-outline" style="padding:4px 12px;font-size:12px;color:var(--navy-850);background:#fff;border-color:var(--gold-500);font-weight:600">🔗 เชื่อมต่อ Google Sheets</button>
+      </div>
+    </div>
+  `;
+
   document.getElementById('screen').innerHTML = `
     ${banner(
       'Payment & Billing Tracker',
@@ -675,6 +813,7 @@ function payment(initialVendor = '') {
         </select>
       </div>`
     )}
+    ${syncStatusHtml}
     <div id="paymentResults"></div>
   `;
 
@@ -1217,7 +1356,15 @@ function filterGlobal(term) {
 }
 
 // Bootstrap
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   initNav();
   dashboard();
+  if (localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL) {
+    const synced = await syncPaymentFromGoogleSheet();
+    if (synced) {
+      const cur = document.querySelector('.nav-link.active')?.dataset.page;
+      if (cur === 'Payment') payment();
+      else if (cur === 'Contractor Contract') contractorContract();
+    }
+  }
 });
