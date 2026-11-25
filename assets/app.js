@@ -39,7 +39,7 @@ async function syncPaymentFromGoogleSheet(customUrl = null) {
   const sheetId = match ? match[1] : targetUrl.trim();
   if (!sheetId) return false;
 
-  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
   try {
     const res = await fetch(csvUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
