@@ -674,6 +674,29 @@ function dashboard() {
   const openJobs = jobs.filter(x => x[6] === 'Open');
   const latestMp = manpowerHistory[0];
 
+  const names = [...new Set(jobs.map(x => x[0]))];
+  const companySummaries = names.map((name, i) => {
+    const rows = jobs.filter(x => x[0] === name);
+    const cTotal = rows.reduce((s, x) => s + x[2], 0);
+    const cPaid = rows.reduce((s, x) => s + x[3], 0);
+    const cBill = rows.reduce((s, x) => s + x[4], 0);
+    const cUnbill = rows.reduce((s, x) => s + x[5], 0);
+    const cPaidPct = cTotal > 0 ? (cPaid / cTotal) * 100 : 0;
+    const allClosed = rows.every(x => String(x[6]).startsWith('Close'));
+    return {
+      index: i,
+      name,
+      rows,
+      count: rows.length,
+      total: cTotal,
+      paid: cPaid,
+      bill: cBill,
+      unbill: cUnbill,
+      paidPct: cPaidPct,
+      allClosed
+    };
+  });
+
   const html = `
     ${banner(
       'Executive Dashboard',
@@ -784,20 +807,83 @@ function dashboard() {
     ${renderManpowerBarChart(true)}
     
 
-    <!-- Ongoing Work Packages Table -->
+    <!-- Company Rollup Summary Matrix (15 Contractors) -->
     <div class="luxury-card">
-      <div class="card-header">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
         <div>
-          <h2>งานที่อยู่ระหว่างดำเนินการ (Open Work Packages)</h2>
-          <span>${openJobs.length} งานที่กำลังปฏิบัติงานในปัจจุบัน</span>
+          <h2 style="display:flex;align-items:center;gap:8px">
+            <span>📊</span> ตารางสรุปภาพรวมแยกตามบริษัทผู้รับเหมา (${companySummaries.length} บริษัท)
+          </h2>
+          <span>สรุปมูลค่างานรวม การชำระเงิน และยอดคงเหลือตามสัญญารายบริษัท</span>
         </div>
-        <div style="display:flex;gap:10px">
-          ${contractorFilterHtml('dashboardContractorFilter')}
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" id="dashboardCompanySearch" class="form-input" placeholder="🔍 ค้นหาบริษัท..." style="max-width:180px;height:36px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff" />
+          <button class="btn-navy" onclick="show('Cost Summary')" style="padding:7px 14px;font-size:13px">ดูรายละเอียด Cost Summary →</button>
         </div>
       </div>
       <div class="card-body" style="padding:0">
-        <div id="dashboardJobsTableWrap">
-          ${renderJobsTable(openJobs)}
+        <div class="table-responsive">
+          <table class="cost-summary-rollup-table">
+            <colgroup>
+              <col style="width: 48px;">
+              <col style="width: 32%;">
+              <col style="width: 17%;">
+              <col style="width: 17%;">
+              <col style="width: 17%;">
+              <col style="width: 17%;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="text-align:center">#</th>
+                <th>ชื่อบริษัทผู้รับเหมา (Vendor)</th>
+                <th style="text-align:right">มูลค่ารวม (บาท)</th>
+                <th style="text-align:right">ชำระแล้ว (บาท)</th>
+                <th style="text-align:right">คงเหลือตามสัญญา (บาท)</th>
+                <th style="text-align:center">% เบิกจ่าย</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardCompanyRollupTbody">
+              ${companySummaries.map((c, i) => `
+                <tr onclick="show('Cost Summary')" title="คลิกเพื่อดูรายละเอียดใน Cost Summary ของ ${c.name}">
+                  <td style="text-align:center;color:var(--slate-400);font-weight:600">${i + 1}</td>
+                  <td style="font-weight:600;color:var(--navy-850)">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span>${c.allClosed ? '✅' : '🏢'}</span>
+                      <span>${c.name}</span>
+                    </div>
+                  </td>
+                  <td class="money-cell">${fmt(c.total)}</td>
+                  <td class="money-cell" style="color:var(--emerald-700)">${fmt(c.paid)}</td>
+                  <td class="money-cell" style="color:var(--rose-700)">${fmt(c.unbill)}</td>
+                  <td style="text-align:center">
+                    <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                      <div class="bar-track" style="width:55px">
+                        <div class="bar-fill" style="width:${c.paidPct}%;background:${c.paidPct >= 100 ? 'var(--emerald-600)' : 'var(--amber-600)'}"></div>
+                      </div>
+                      <b style="font-size:12px;color:var(--navy-800)">${c.paidPct.toFixed(1)}%</b>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style="text-align:center;font-weight:700">Σ</td>
+                <td style="font-weight:700;color:var(--navy-900)">รวมทั้งสิ้น (${companySummaries.length} บริษัท · 28 สัญญา)</td>
+                <td class="money-cell" style="font-weight:700">${fmt(total)}</td>
+                <td class="money-cell" style="font-weight:700;color:var(--emerald-700)">${fmt(paid)}</td>
+                <td class="money-cell" style="font-weight:700;color:var(--rose-700)">${fmt(unbill)}</td>
+                <td style="text-align:center;font-weight:700">
+                  <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+                    <div class="bar-track" style="width:55px">
+                      <div class="bar-fill" style="width:${((paid / total) * 100).toFixed(1)}%;background:var(--emerald-600)"></div>
+                    </div>
+                    <b style="font-size:12px;color:var(--emerald-800)">${((paid / total) * 100).toFixed(1)}%</b>
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     </div>
@@ -805,12 +891,16 @@ function dashboard() {
 
   document.getElementById('screen').innerHTML = html;
 
-  // Wire Filter
-  const f = document.getElementById('dashboardContractorFilter');
-  if (f) {
-    f.onchange = () => {
-      const filtered = f.value ? openJobs.filter(x => x[0] === f.value) : openJobs;
-      document.getElementById('dashboardJobsTableWrap').innerHTML = renderJobsTable(filtered);
+  // Wire Quick Company Search in Dashboard
+  const searchInput = document.getElementById('dashboardCompanySearch');
+  if (searchInput) {
+    searchInput.oninput = () => {
+      const q = searchInput.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#dashboardCompanyRollupTbody tr');
+      rows.forEach(tr => {
+        const text = tr.innerText.toLowerCase();
+        tr.style.display = text.includes(q) ? '' : 'none';
+      });
     };
   }
 }
