@@ -310,6 +310,170 @@ function renderSCurveSvg() {
   `;
 }
 
+// -------------------------------------------------------------
+// Daily Manpower Trend Curve (Historical Trend Overview)
+// -------------------------------------------------------------
+let selectedTrendRange = 'all'; // '7', '14', '30', 'all'
+
+function setTrendRange(range) {
+  selectedTrendRange = range;
+  const currentView = document.querySelector('.nav-link.active')?.dataset.page;
+  if (currentView === 'Executive Dashboard') {
+    dashboard();
+  } else if (currentView === 'Manpower') {
+    manpower();
+  }
+}
+
+function renderManpowerTrendChart() {
+  const series = [
+    ['main', 'ยายบัวงานสถาปัตย์', '#0b2345', n => n.includes('สถาปัตย์')],
+    ['system', 'ทีมระบบ', '#c5a869', n => n.includes('ระบบ')],
+    ['firstcon', 'FirstCon', '#ef4444', n => n.toLowerCase().includes('firstcon')],
+    ['thewa', 'เทวาวณิชกิจ', '#10b981', n => n.includes('เทวาวณิชกิจ')],
+    ['exb', 'EXB', '#8b5cf6', n => n.includes('EXB')]
+  ];
+
+  const selected = series.find(s => s[0] === selectedMpContractor);
+  const getVal = (r, s) => r.groups.filter(g => s[3](g[0])).reduce((sum, g) => sum + (g[2] ?? g[1].reduce((a, b) => a + b[1], 0)), 0);
+
+  let rawData = [...manpowerHistory].reverse(); // chronological order from oldest to newest
+  if (selectedTrendRange === '7') {
+    rawData = rawData.slice(-7);
+  } else if (selectedTrendRange === '14') {
+    rawData = rawData.slice(-14);
+  } else if (selectedTrendRange === '30') {
+    rawData = rawData.slice(-30);
+  }
+
+  const values = rawData.map(r => ({
+    date: r.date,
+    thaiDate: r.thaiDate,
+    label: r.thaiDate.slice(0, 5),
+    val: selected ? getVal(r, selected) : r.total
+  }));
+
+  const maxVal = Math.max(...values.map(x => x.val), 1);
+  const minVal = Math.min(...values.map(x => x.val));
+  const avgVal = Math.round(values.reduce((s, x) => s + x.val, 0) / values.length);
+  const latestVal = values[values.length - 1]?.val || 0;
+
+  const chartName = selected ? selected[1] : 'กำลังพลรวมทุกทีม';
+  const lineColor = selected ? selected[2] : '#0b2345';
+  const fillColor = selected ? selected[2] : '#0b2345';
+
+  const w = Math.max(860, values.length * 28);
+  const h = 260;
+  const padLeft = 45;
+  const padRight = 35;
+  const padTop = 30;
+  const padBottom = 40;
+  const plotW = w - padLeft - padRight;
+  const plotH = h - padTop - padBottom;
+  const scaleMax = Math.ceil(maxVal * 1.15 / 10) * 10 || 10;
+
+  const getX = i => padLeft + (i / Math.max(1, values.length - 1)) * plotW;
+  const getY = v => padTop + plotH - (v / scaleMax) * plotH;
+
+  const points = values.map((d, i) => `${getX(i).toFixed(1)},${getY(d.val).toFixed(1)}`).join(' ');
+  const areaPoints = `${getX(0).toFixed(1)},${padTop + plotH} ${points} ${getX(values.length - 1).toFixed(1)},${padTop + plotH}`;
+  const avgY = getY(avgVal);
+
+  return `
+    <div class="luxury-card" style="margin-bottom:22px">
+      <div class="card-header" style="flex-wrap:wrap;gap:12px">
+        <div>
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold-500)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            แนวโน้มกำลังพลรายวันภาพรวม (${chartName})
+          </h2>
+          <span>Daily Manpower Trend Curve · ข้อมูลสถิติย้อนหลังต่อเนื่อง (${values.length} วัน)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;gap:4px;background:#f1f5f9;padding:3px;border-radius:8px">
+            <button class="btn-outline" style="padding:3px 9px;font-size:12px;border:none;${selectedTrendRange === '7' ? 'background:#fff;color:var(--navy-850);box-shadow:0 1px 3px rgba(0,0,0,0.1);font-weight:700' : 'background:transparent;color:#64748b'}" onclick="setTrendRange('7')">7 วัน</button>
+            <button class="btn-outline" style="padding:3px 9px;font-size:12px;border:none;${selectedTrendRange === '14' ? 'background:#fff;color:var(--navy-850);box-shadow:0 1px 3px rgba(0,0,0,0.1);font-weight:700' : 'background:transparent;color:#64748b'}" onclick="setTrendRange('14')">14 วัน</button>
+            <button class="btn-outline" style="padding:3px 9px;font-size:12px;border:none;${selectedTrendRange === '30' ? 'background:#fff;color:var(--navy-850);box-shadow:0 1px 3px rgba(0,0,0,0.1);font-weight:700' : 'background:transparent;color:#64748b'}" onclick="setTrendRange('30')">30 วัน</button>
+            <button class="btn-outline" style="padding:3px 9px;font-size:12px;border:none;${selectedTrendRange === 'all' ? 'background:#fff;color:var(--navy-850);box-shadow:0 1px 3px rgba(0,0,0,0.1);font-weight:700' : 'background:transparent;color:#64748b'}" onclick="setTrendRange('all')">ทั้งหมด (${manpowerHistory.length} วัน)</button>
+          </div>
+          <div style="display:flex;gap:16px;text-align:right">
+            <div><small style="display:block;color:#64748b;font-size:11px">ล่าสุด</small><b style="color:var(--navy-850);font-size:16px">${latestVal} <small style="font-size:11px">คน</small></b></div>
+            <div><small style="display:block;color:#64748b;font-size:11px">สูงสุด</small><b style="color:#16a34a;font-size:16px">${maxVal} <small style="font-size:11px">คน</small></b></div>
+            <div><small style="display:block;color:#64748b;font-size:11px">เฉลี่ย</small><b style="color:#b45309;font-size:16px">${avgVal} <small style="font-size:11px">คน</small></b></div>
+            <div><small style="display:block;color:#64748b;font-size:11px">ต่ำสุด</small><b style="color:#dc2626;font-size:16px">${minVal} <small style="font-size:11px">คน</small></b></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="overflow-x:auto;padding-bottom:10px">
+          <svg viewBox="0 0 ${w} ${h}" style="width:100%;min-width:${Math.min(w, 860)}px;height:260px;overflow:visible">
+            <defs>
+              <linearGradient id="mpGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${fillColor}" stop-opacity="0.22"/>
+                <stop offset="100%" stop-color="${fillColor}" stop-opacity="0.01"/>
+              </linearGradient>
+            </defs>
+            <!-- Gridlines & Y-Axis values -->
+            ${[0, 0.25, 0.5, 0.75, 1].map(frac => {
+              const val = Math.round(scaleMax * frac);
+              const yPos = padTop + plotH - frac * plotH;
+              return `
+                <line x1="${padLeft}" y1="${yPos}" x2="${w - padRight}" y2="${yPos}" stroke="#f1f5f9" stroke-width="1"/>
+                <text x="${padLeft - 8}" y="${yPos + 4}" font-size="11" fill="#94a3b8" text-anchor="end">${val}</text>
+              `;
+            }).join('')}
+
+            <!-- Average dashed line -->
+            <line x1="${padLeft}" y1="${avgY}" x2="${w - padRight}" y2="${avgY}" stroke="#d97706" stroke-width="1.5" stroke-dasharray="6 4"/>
+            <text x="${w - padRight}" y="${avgY - 6}" font-size="11" font-weight="700" fill="#b45309" text-anchor="end">เฉลี่ย ${avgVal} คน</text>
+
+            <!-- Area & Line -->
+            <polygon points="${areaPoints}" fill="url(#mpGradient)"/>
+            <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+            <!-- Data Dots & Labels -->
+            ${values.map((d, i) => {
+              const xPos = getX(i);
+              const yPos = getY(d.val);
+              const isHighlight = d.val === maxVal || d.val === minVal || i === values.length - 1;
+              const dotColor = d.val === maxVal ? '#16a34a' : d.val === minVal ? '#dc2626' : lineColor;
+              const showDate = values.length <= 14 || i % Math.ceil(values.length / 15) === 0 || i === values.length - 1;
+
+              return `
+                <g>
+                  <circle cx="${xPos}" cy="${yPos}" r="${isHighlight ? 5 : 3.5}" fill="${dotColor}" stroke="#fff" stroke-width="1.5">
+                    <title>${d.thaiDate} (${d.date}): ${d.val} คน · ${(d.val * 8).toLocaleString()} MH/วัน</title>
+                  </circle>
+                  ${isHighlight || values.length <= 14 ? `
+                    <text x="${xPos}" y="${yPos - 9}" font-size="11" font-weight="700" fill="${dotColor}" text-anchor="middle">${d.val}</text>
+                  ` : ''}
+                  ${showDate ? `
+                    <text x="${xPos}" y="${h - 12}" font-size="11" fill="#64748b" text-anchor="middle">${d.label}</text>
+                  ` : ''}
+                </g>
+              `;
+            }).join('')}
+          </svg>
+        </div>
+
+        <!-- Legend & Contractor Selection -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9">
+          <span style="font-size:12px;font-weight:700;color:#64748b;margin-right:4px">เลือกดูตามผู้รับเหมา:</span>
+          <button class="btn-outline" style="padding:4px 10px;font-size:12px;${selectedMpContractor === 'all' ? 'background:var(--navy-850);color:#fff;border-color:var(--navy-850)' : ''}" onclick="setMpContractor('all')">
+            ทั้งหมด
+          </button>
+          ${series.map(s => `
+            <button class="btn-outline" style="padding:4px 10px;font-size:12px;${selectedMpContractor === s[0] ? `background:${s[2]};color:#fff;border-color:${s[2]}` : ''}" onclick="setMpContractor('${s[0]}')">
+              <span style="width:8px;height:8px;border-radius:2px;background:${selectedMpContractor === s[0] ? '#fff' : s[2]};display:inline-block;margin-right:4px"></span>
+              ${s[1]}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // 7-Day Manpower Stacked Bar Chart Component
 let selectedMpContractor = 'all';
 function renderManpowerBarChart(interactive = true) {
@@ -514,7 +678,8 @@ function dashboard() {
     </div>
 
     <!-- 7-Day Manpower Proportion Chart -->
-    ${renderManpowerBarChart(true)}
+    ${renderManpowerTrendChart()}
+    
 
     <!-- Ongoing Work Packages Table -->
     <div class="luxury-card">
@@ -726,8 +891,12 @@ function manpower(index = 0) {
       </div>
     </div>
 
+    <!-- Daily Manpower Trend Curve -->
+    
+
     <!-- 7-Day Stacked Bar Chart -->
-    ${renderManpowerBarChart(true)}
+    ${renderManpowerTrendChart()}
+    
 
     <!-- Detailed breakdown cards -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:18px">
