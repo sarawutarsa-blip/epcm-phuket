@@ -1,4 +1,4 @@
-﻿// Glenalmond Phuket EPCM Data Model
+// Glenalmond Phuket EPCM Data Model
 // Live Google Sheets sync URL (Pre-configured)
 window.GOOGLE_SHEETS_PAYMENT_URL = 'https://docs.google.com/spreadsheets/d/1qKr7ahiBiUv4iDS02g96w1D7N1O8lJf44z1U0vo4gMA/edit';
 const jobs=[
@@ -425,7 +425,18 @@ const manpowerHistory=[
 {date:'15 Nov 2026',thaiDate:'15/11/69',total:130,groups:manpowerGroups15Nov},
 {date:'14 Nov 2026',thaiDate:'14/11/69',total:144,groups:manpowerGroups14Nov},
 {date:'13 Nov 2026',thaiDate:'13/11/69',total:118,groups:manpowerGroups13Nov},{date:'12 Nov 2026',thaiDate:'12/11/69',total:116,groups:manpowerGroups12Nov},{date:'11 Nov 2026',thaiDate:'11/11/69',total:115,groups:manpowerGroups11Nov},{date:'10 Nov 2026',thaiDate:'10/11/69',total:130,groups:manpowerGroups10Nov},{date:'09 Nov 2026',thaiDate:'09/11/69',total:134,groups:manpowerGroups09Nov},{date:'08 Nov 2026',thaiDate:'08/11/69',total:99,groups:manpowerGroups08Nov},{date:'07 Nov 2026',thaiDate:'07/11/69',total:145,groups:manpowerGroups07Nov},{date:'06 Nov 2026',thaiDate:'06/11/69',total:139,groups:manpowerGroups06Nov},{date:'05 Nov 2026',thaiDate:'05/11/69',total:129,groups:manpowerGroups05Nov},{date:'04 Nov 2026',thaiDate:'04/11/69',total:133,groups:manpowerGroups04Nov},{date:'03 Nov 2026',thaiDate:'03/11/69',total:112,groups:manpowerGroups03Nov},{date:'02 Nov 2026',thaiDate:'02/11/69',total:110,groups:manpowerGroups02Nov},{date:'01 Nov 2026',thaiDate:'01/11/69',total:74,groups:manpowerGroups01Nov},{date:'31 Oct 2026',thaiDate:'31/10/69',total:108,groups:manpowerGroups31Oct},{date:'30 Oct 2026',thaiDate:'30/10/69',total:115,groups:manpowerGroups30Oct},{date:'29 Oct 2026',thaiDate:'29/10/69',total:117,groups:manpowerGroups29Oct},{date:'28 Oct 2026',thaiDate:'28/10/69',total:71,groups:manpowerGroups28Oct},{date:'27 Oct 2026',thaiDate:'27/10/69',total:81,groups:manpowerGroups27Oct},{date:'26 Oct 2026',thaiDate:'26/10/69',total:24,groups:manpowerGroups26Oct},{date:'25 Oct 2026',thaiDate:'25/10/69',total:80,groups:manpowerGroups25Oct},{date:'24 Oct 2026',thaiDate:'24/10/69',total:149,groups:manpowerGroups24Oct},{date:'23 Oct 2026',thaiDate:'23/10/69',total:157,groups:manpowerGroups23Oct},{date:'22 Oct 2026',thaiDate:'22/10/69',total:150,groups:manpowerGroups22Oct},{date:'19 Oct 2026',thaiDate:'19/10/69',total:137,groups:manpowerGroups19Oct},{date:'18 Oct 2026',thaiDate:'18/10/69',total:122,groups:manpowerGroups18Oct},{date:'17 Oct 2026',thaiDate:'17/10/69',total:148,groups:manpowerGroups17Oct},{date:'16 Oct 2026',thaiDate:'16/10/69',total:147,groups:manpowerGroups16Oct},{date:'15 Oct 2026',thaiDate:'15/10/69',total:147,groups:manpowerGroups15Oct},{date:'14 Oct 2026',thaiDate:'14/10/69',total:151,groups:manpowerGroups14Oct},{date:'13 Oct 2026',thaiDate:'13/10/69',total:121,groups:manpowerGroups13Oct},{date:'12 Oct 2026',thaiDate:'12/10/69',total:128,groups:manpowerGroups12Oct},{date:'11 Oct 2026',thaiDate:'11/10/69',total:137,groups:manpowerGroups11Oct},{date:'10 Oct 2026',thaiDate:'10/10/69',total:159,groups:manpowerGroups10Oct},{date:'09 Oct 2026',thaiDate:'09/10/69',total:174,groups:manpowerGroups09Oct},{date:'08 Oct 2026',thaiDate:'08/10/69',total:162,groups:manpowerGroups08Oct},{date:'06 Oct 2026',thaiDate:'06/10/69',total:150,groups:manpowerGroups06Oct},{date:'04 Oct 2026',thaiDate:'04/10/69',total:110,groups:manpowerGroups04Oct},{date:'03 Oct 2026',thaiDate:'03/10/69',total:178,groups:manpowerGroups03Oct},{date:'02 Oct 2026',thaiDate:'02/10/69',total:187,groups:manpowerGroups02Oct},{date:'01 Oct 2026',thaiDate:'01/10/69',total:171,groups:manpowerGroups01Oct},{date:'30 Sep 2026',thaiDate:'30/09/69',total:145,groups:manpowerGroups30},{date:'29 Sep 2026',thaiDate:'29/09/69',total:172,groups:manpowerGroups29},{date:'28 Sep 2026',thaiDate:'28/09/69',total:167,groups:manpowerGroups28},{date:'27 Sep 2026',thaiDate:'27/09/69',total:26,groups:manpowerGroups27},{date:'26 Sep 2026',thaiDate:'26/09/69',total:167,groups:manpowerGroups26},{date:'25 Sep 2026',thaiDate:'25/09/69',total:173,groups:manpowerGroups25},{date:'24 Sep 2026',thaiDate:'24/09/69',total:165,groups:manpowerGroups24},{date:'23 Sep 2026',thaiDate:'23/09/69',total:184,groups:manpowerGroups23},{date:'22 Sep 2026',thaiDate:'22/09/69',total:182,groups:manpowerGroups22},{date:'21 Sep 2026',thaiDate:'21/09/69',total:173,groups:manpowerGroups21},{date:'20 Sep 2026',thaiDate:'20/09/69',total:93,groups:manpowerGroups},{date:'19 Sep 2026',thaiDate:'19/09/69',total:168,groups:manpowerGroups19}];
-const meetingHistory=[{no:49,date:'25/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',agendas:[
+const meetingHistory=[{no:49,date:'25/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',
+attendees:[
+  {no:1,name:'นางสาว สุภาภรณ์ เพชรสุด',company:'YBT',signed:true},
+  {no:2,name:'ณัฐกิตติ์ สุนทรีย์',company:'YBT',signed:true},
+  {no:3,name:'สมมาตร คำผา',company:'YBT',signed:true},
+  {no:4,name:'ธเนศ ยิ่งงาม',company:'YBT',signed:true},
+  {no:5,name:'เหมพงศ์ พินิจพรม',company:'YBT',signed:true},
+  {no:6,name:'สิทธิภัทร์ กองพูลแก้ว',company:'TVE',signed:true},
+  {no:7,name:'เศรษฐศักดิ์ ดำรงศักดิ์',company:'WCE',signed:true},
+  {no:8,name:'สราญจ์ อาจ',company:'WCE',signed:true},
+  {no:9,name:'ศิวรรธน์ ขุ่นทอง',company:'GPIS',signed:true}
+],agendas:[
 ['รับรองรายงานการประชุมครั้งที่ 48',['ไม่มีแก้ไขรายงานการประชุมครั้งก่อน']],
 ['แจ้งเพื่อทราบ กำหนดการสำคัญและค่าปรับ YBT ล่าสุด',[
   'ตารางเปรียบเทียบค่าปรับ YBT: มูลค่าสัญญา 166,000,000 บาท ครบกำหนดสัญญา 16 ก.ค. 2569 ล่าช้าสะสม 132 วัน (+7 วัน) คิดค่าปรับ 0.05% ต่อวัน (83,000 บาท/วัน) รวมค่าปรับสะสม 10,956,000 บาท (เพิ่มขึ้นจาก 10,375,000 บาท ณ 18 พ.ย. 69)',
@@ -471,7 +482,18 @@ const meetingHistory=[{no:49,date:'25/11/69',time:'10.00',location:'Onsite / Onl
   'จัดระเบียบเศษวัสดุ ขยะ กองวัสดุภายนอก แสงสว่าง และห้องน้ำให้ถูกสุขลักษณะ',
   'ตรวจสภาพนั่งร้าน จุดยึดอาคาร อุปกรณ์ยึด ผ้าใบกันฝุ่น ตาข่าย และแนวริ้วขาวแดงทุกจุดเสี่ยง'
 ]]
-]},{no:48,date:'18/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',agendas:[
+]},{no:48,date:'18/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',
+attendees:[
+  {no:1,name:'เศรษฐศักดิ์ ดำรงศักดิ์',company:'WCE',signed:true},
+  {no:2,name:'สราญจ์ อาจ',company:'WCE',signed:true},
+  {no:3,name:'สิทธิภัทร์ กองพูลแก้ว',company:'TVE',signed:true},
+  {no:4,name:'นางสาว สุภาภรณ์ เพชรสุด',company:'YBT',signed:true},
+  {no:5,name:'ณัฐกิตติ์ สุนทรีย์',company:'YBT',signed:true},
+  {no:6,name:'สมมาตร คำผา',company:'YBT',signed:true},
+  {no:7,name:'ธเนศ ยิ่งงาม',company:'YBT',signed:true},
+  {no:8,name:'เหมพงศ์ พินิจพรม',company:'YBT',signed:true},
+  {no:9,name:'ศิวรรธน์ ขุ่นทอง',company:'GPIS',signed:true}
+],agendas:[
 ['รับรองรายงานการประชุมครั้งที่ 47',['ไม่มีแก้ไขรายงานการประชุมครั้งก่อน']],
 ['แจ้งเพื่อทราบ กำหนดการและค่าปรับ YBT',[
   'สรุปค่าปรับ YBT ณ 18 พ.ย. 69: สัญญา 166,000,000 บาท ครบกำหนด 16 ก.ค. 69 ล่าช้า 125 วัน ค่าปรับ 0.05%/วัน (83,000 บาท/วัน) รวมค่าปรับสะสม 10,375,000 บาท',
@@ -513,7 +535,18 @@ const meetingHistory=[{no:49,date:'25/11/69',time:'10.00',location:'Onsite / Onl
   'จัดการขยะ กองวัสดุ แสงสว่าง และสุขอนามัย',
   'ตรวจนั่งร้าน ราวกันตก ตาข่าย และแนวริ้วขาวแดงทุกจุดเสี่ยง'
 ]]
-]},{no:47,date:'11/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',agendas:[
+]},{no:47,date:'11/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',
+attendees:[
+  {no:1,name:'นางสาว สุภาภรณ์ เพชรสุด',company:'YBT',signed:true},
+  {no:2,name:'ณัฐกิตติ์ สุนทรีย์',company:'YBT',signed:true},
+  {no:3,name:'สมมาตร คำผา',company:'YBT',signed:true},
+  {no:4,name:'ธเนศ ยิ่งงาม',company:'YBT',signed:true},
+  {no:5,name:'สิทธิภัทร์ กองพูลแก้ว',company:'TVE',signed:true},
+  {no:6,name:'เหมพงศ์ พินิจพรม',company:'YBT',signed:true},
+  {no:7,name:'ศิวรรธน์ ขุ่นทอง',company:'GPIS',signed:true},
+  {no:8,name:'เศรษฐศักดิ์ ดำรงศักดิ์',company:'WCE',signed:true},
+  {no:9,name:'สราญจ์ อาจ',company:'WCE',signed:true}
+],agendas:[
 ['รับรองรายงานการประชุมครั้งที่ 46',['ไม่มีแก้ไขรายงานการประชุมครั้งก่อน']],
 ['แจ้งเพื่อทราบ กำหนดการและค่าปรับ YBT',[
   'สรุปค่าปรับ YBT: มูลค่าสัญญา 166,000,000 บาท ครบกำหนดเดิม 16 ก.ค. 2569 ล่าช้าสะสม 118 วัน อัตราค่าปรับ 0.05% ต่อวัน (83,000 บาท/วัน) รวมค่าปรับสะสม 9,794,000 บาท',
@@ -556,7 +589,9 @@ const meetingHistory=[{no:49,date:'25/11/69',time:'10.00',location:'Onsite / Onl
   'ตรวจตราความสะอาด ขนย้ายขยะ จัดระเบียบกองวัสดุ แสงสว่าง และสุขอนามัยห้องน้ำ',
   'ตรวจสอบนั่งร้าน จุดยึดอาคาร ผ้าใบกันฝุ่น ราวกันตก และริ้วขาวแดงทุกจุดเสี่ยง'
 ]]
-]},{no:46,date:'04/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',agendas:[
+]},{no:46,date:'04/11/69',time:'10.00',location:'Onsite / Online',chairman:'EPCM',
+attendeeNote:'ใบลงชื่อสูญหาย / ข้ามตามคำสั่ง (อัปเดตบันทึกวาระและรายงาน PDF ครบถ้วน)',
+agendas:[
 ['รับรองรายงานการประชุมครั้งที่ 45',['ไม่มีแก้ไข']],
 ['แจ้งเพื่อทราบและกำหนดการโครงการ',[
   'แก้ไขรอยร้าวดาดฟ้า: แจ้งประชุมครั้งถัดไป 3/11/69, YB แจ้งดำเนินการ 18/11/69',

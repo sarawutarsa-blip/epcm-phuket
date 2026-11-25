@@ -218,6 +218,30 @@
     font-size:11.5px; color:var(--ink-3); padding-top:4px;
   }
 
+  /* Gantt Table styling */
+  .gantt-table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;
+  }
+  .gantt-table th {
+    background: var(--surface-2); color: var(--ink-2); font-weight: 600; padding: 10px 12px;
+    border-bottom: 2px solid var(--border); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .gantt-table td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--ink-1); vertical-align: middle;
+  }
+  .gantt-table tr:hover td { background: rgba(0,0,0,0.015); }
+  .gantt-table tr.group-row td {
+    background: var(--surface-2); font-weight: 700; color: var(--plan); font-size: 12px;
+    padding-top: 14px; padding-bottom: 6px; border-top: 2px solid var(--border);
+  }
+  .prog-track {
+    width: 100%; height: 7px; background: var(--surface-2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .prog-fill { height: 100%; border-radius: 4px; }
+  .badge-done { background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+  .badge-prog { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+  .badge-pend { background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+
   @media (max-width:560px){
     .head-right{ align-items:flex-start; text-align:left; }
     header.report-head{ flex-direction:column; align-items:flex-start; }
@@ -292,8 +316,40 @@
     </div>
   </section>
 
+  <section class="card" id="ganttSection" style="margin-top:20px">
+    <div class="card-head">
+      <div>
+        <h2>วิเคราะห์ความก้าวหน้าตามหมวดงาน (Gantt Work Packages 45 รายการ)</h2>
+        <p>ข้อมูลจากแผ่นงาน S-Curve (Gantt) · มูลค่าโครงการรวม 283,860,000.01 บาท (Ex VAT)</p>
+      </div>
+      <div class="legend">
+        <span class="item"><span class="badge-done">เสร็จ 100%</span></span>
+        <span class="item"><span class="badge-prog">กำลังดำเนินการ</span></span>
+        <span class="item"><span class="badge-pend">ยังไม่เริ่ม</span></span>
+      </div>
+    </div>
+    <div style="overflow-x:auto;margin-top:14px">
+      <table class="gantt-table" id="ganttTable">
+        <thead>
+          <tr>
+            <th style="width:45px;text-align:center">#</th>
+            <th>รายการงาน / Work Package</th>
+            <th style="text-align:right">มูลค่าสัญญา (บาท)</th>
+            <th style="text-align:right">น้ำหนัก (%)</th>
+            <th style="text-align:right">แผน (%)</th>
+            <th style="text-align:right">ผลงานจริง (%)</th>
+            <th style="width:120px;text-align:center">ความคืบหน้า</th>
+            <th style="text-align:right">เทียบทั้งโครงการ</th>
+            <th style="text-align:center">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="ganttTbody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <footer>
-    <span>ที่มา: S-Curve_International_School_Phuket_5.xlsx · ช่วง ต.ค.69-3</span>
+    <span>ที่มา: S-Curve_International_School_Phuket_7.xlsx · หน้า S-Curve (Gantt) · ข้อมูล ณ ต.ค.69-3</span>
     <span>Glenalmond Phuket International School</span>
   </footer>
 
@@ -507,7 +563,43 @@
     }
   }
 
+  function renderGantt() {
+    var tbody = document.getElementById('ganttTbody');
+    if (!tbody || !window.SCURVE_GANTT_ITEMS) return;
+    var items = window.SCURVE_GANTT_ITEMS;
+    var currentGroup = '';
+    var html = '';
+
+    items.forEach(function(item) {
+      if (item.group !== currentGroup) {
+        currentGroup = item.group;
+        html += '<tr class="group-row"><td colspan="9">📁 ' + currentGroup + '</td></tr>';
+      }
+      var statusClass = item.status === 'เสร็จ 100%' ? 'badge-done' : (item.status === 'ยังไม่เริ่ม' ? 'badge-pend' : 'badge-prog');
+      var barColor = item.actualPct >= 100 ? '#15803d' : (item.actualPct > 0 ? '#2a78d6' : '#cbd5e1');
+
+      html += '<tr>' +
+        '<td style="text-align:center;color:var(--ink-3);font-family:\'IBM Plex Mono\',monospace">' + item.no + '</td>' +
+        '<td style="font-weight:500">' + item.desc + '</td>' +
+        '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">' + item.amount.toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>' +
+        '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">' + item.weight.toFixed(2) + '%</td>' +
+        '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--plan)">' + item.planPct.toFixed(1) + '%</td>' +
+        '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:' + (item.actualPct < item.planPct ? 'var(--critical)' : 'var(--good)') + '">' + item.actualPct.toFixed(1) + '%</td>' +
+        '<td>' +
+          '<div class="prog-track">' +
+            '<div class="prog-fill" style="width:' + Math.min(100, item.actualPct) + '%;background:' + barColor + '"></div>' +
+          '</div>' +
+        '</td>' +
+        '<td style="text-align:right;font-family:\'IBM Plex Mono\',monospace">' + item.actualProjectPct.toFixed(2) + '%</td>' +
+        '<td style="text-align:center"><span class="' + statusClass + '">' + item.status + '</span></td>' +
+      '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
   render();
+  renderGantt();
   window.addEventListener('resize', render);
 })();
 </script>

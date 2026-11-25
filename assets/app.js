@@ -720,14 +720,20 @@ function scurve() {
   document.getElementById('screen').innerHTML = `
     ${banner(
       'Project S-Curve Performance',
-      'รายงานกราฟแสดงผลความก้าวหน้าโครงการ Glenalmond Phuket International School รายสัปดาห์',
-      `<a class="btn-gold" href="assets/S-Curve_International_School_Phuket_latest.xlsx" download>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        ดาวน์โหลดไฟล์ Excel ล่าสุด
-      </a>`
+      'รายงานกราฟแสดงผลความก้าวหน้าโครงการ Glenalmond Phuket International School รายสัปดาห์ (อ้างอิง S-Curve #7 · Gantt 45 รายการ)',
+      `<div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn-gold" href="assets/S-Curve_International_School_Phuket_7.xlsx" download>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          📥 ดาวน์โหลด Excel (S-Curve #7)
+        </a>
+        <a class="btn-navy" href="assets/S-Curve_International_School_Phuket_7.pdf" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          📄 เปิดรายงาน PDF (S-Curve #7) ↗
+        </a>
+      </div>`
     )}
     <div class="luxury-card" style="padding:0;overflow:hidden">
-      <iframe src="assets/Glenalmond_SCurve_Report.html" title="Glenalmond S-Curve" style="width:100%;height:1300px;border:none;display:block"></iframe>
+      <iframe src="assets/Glenalmond_SCurve_Report.html" title="Glenalmond S-Curve" style="width:100%;height:2200px;border:none;display:block"></iframe>
     </div>
   `;
 }
@@ -1446,6 +1452,76 @@ function meeting(index = 0) {
         </div>
       `).join('')}
     </div>
+
+    <!-- Attendees Table -->
+    ${m.attendees && m.attendees.length > 0 ? `
+      <div class="luxury-card" style="margin-top:20px">
+        <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <h2 style="font-size:15px;display:flex;align-items:center;gap:8px">
+            <span>👥</span> รายชื่อผู้เข้าร่วมประชุม (${m.attendees.length} ท่าน · ลงนามครบถ้วน)
+          </h2>
+          ${att ? `<a class="btn-outline" style="font-size:12px;padding:4px 10px" href="${att.file}" target="_blank" rel="noopener">🔍 เปิดดูภาพใบลงชื่อตัวจริง ↗</a>` : ''}
+        </div>
+        <div class="card-body" style="padding:0">
+          <div style="overflow-x:auto">
+            <table class="luxury-table" style="width:100%;font-size:13px">
+              <thead>
+                <tr>
+                  <th style="width:70px;text-align:center">ลำดับ</th>
+                  <th>ชื่อ-นามสกุล ผู้เข้าร่วม</th>
+                  <th style="text-align:center">บริษัท / ฝ่าย</th>
+                  <th style="text-align:center">การลงนาม</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${m.attendees.map(a => `
+                  <tr>
+                    <td style="text-align:center;color:var(--slate-500);font-weight:600">${a.no}</td>
+                    <td style="font-weight:600;color:var(--navy-850)">${a.name}</td>
+                    <td style="text-align:center">
+                      <span class="badge ${a.company === 'WCE' ? 'badge-blue' : a.company === 'GPIS' ? 'badge-gold' : a.company === 'TVE' ? 'badge-amber' : 'badge-slate'}" style="font-size:11.5px;padding:4px 10px;border-radius:6px;font-weight:600">
+                        ${a.company}
+                      </span>
+                    </td>
+                    <td style="text-align:center">
+                      <span style="color:#0ca30c;font-weight:600;display:inline-flex;align-items:center;gap:4px">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        ลงนามแล้ว
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    ` : (m.attendeeNote ? `
+      <div class="luxury-card" style="margin-top:20px;border-left:4px solid #f59e0b">
+        <div class="card-body" style="display:flex;align-items:center;gap:10px;color:var(--slate-700);font-size:13.5px">
+          <span style="font-size:20px">⚠️</span> <div><b>หมายเหตุใบลงชื่อ:</b> ${m.attendeeNote}</div>
+        </div>
+      </div>
+    ` : '')}
+
+    <!-- Scanned Attendance Sheet -->
+    ${att ? `
+      <div class="luxury-card" style="margin-top:20px">
+        <div class="card-header" style="background:#f8fafc">
+          <h2 style="font-size:15px;display:flex;align-items:center;gap:8px">
+            <span>✍️</span> ภาพสแกนใบลงทะเบียนผู้เข้าร่วมประชุม (Weekly Meeting #${m.no})
+          </h2>
+        </div>
+        <div class="card-body" style="text-align:center;padding:18px;background:var(--slate-50)">
+          <a href="${att.file}" target="_blank" rel="noopener" title="คลิกเพื่อดูภาพขนาดเต็ม">
+            <img src="${att.file}" alt="ใบลงชื่อ Weekly Meeting #${m.no}" style="max-width:100%;max-height:550px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.08);border:1px solid #e2e8f0;object-fit:contain" />
+          </a>
+          <div style="margin-top:10px;font-size:12px;color:var(--slate-500)">
+            คลิกที่ภาพเพื่อเปิดดูภาพต้นฉบับความละเอียดสูง
+          </div>
+        </div>
+      </div>
+    ` : ''}
   `;
 
   document.getElementById('meetingSelect').onchange = e => meeting(+e.target.value);
