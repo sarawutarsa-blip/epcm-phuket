@@ -959,18 +959,18 @@ function renderContractorContractsBody() {
 
   container.innerHTML = `
     <div class="table-responsive">
-      <table class="luxury-table">
+      <table class="luxury-table" style="font-size:12.5px">
         <thead>
           <tr>
-            <th style="width:60px;text-align:center">ลำดับ</th>
-            <th style="min-width:220px">ผู้รับเหมา (Vendor)</th>
-            <th style="min-width:240px">งาน / เงื่อนไขชำระเงิน</th>
-            <th style="text-align:right;min-width:130px">มูลค่า (บาท)</th>
-            <th style="text-align:right;min-width:130px">จ่ายเงินแล้ว</th>
-            <th style="text-align:right;min-width:130px">วางบิลแล้ว (ยังไม่จ่าย)</th>
-            <th style="text-align:right;min-width:130px">ยังไม่วางบิล</th>
-            <th style="min-width:120px">% เบิกจ่าย</th>
-            <th style="min-width:160px">สถานะ / หมายเหตุ</th>
+            <th style="width:50px;text-align:center">ลำดับ</th>
+            <th style="min-width:180px">ผู้รับเหมา (Vendor)</th>
+            <th style="min-width:200px">งาน / เงื่อนไขชำระเงิน</th>
+            <th style="text-align:right;min-width:115px">มูลค่า (บาท)</th>
+            <th style="text-align:right;min-width:115px">จ่ายเงินแล้ว</th>
+            <th style="text-align:right;min-width:115px">วางบิลแล้ว</th>
+            <th style="text-align:right;min-width:115px">ยังไม่วางบิล</th>
+            <th style="min-width:95px;text-align:center">% เบิกจ่าย</th>
+            <th style="min-width:130px">สถานะ / หมายเหตุ</th>
           </tr>
         </thead>
         <tbody>
@@ -978,13 +978,13 @@ function renderContractorContractsBody() {
         </tbody>
         <tfoot>
           <tr style="background:#0f172a;color:#ffffff;font-weight:700">
-            <td colspan="3" style="padding:14px 16px;font-size:13.5px">รวม (${list.length} สัญญา)</td>
+            <td colspan="3" style="padding:14px 16px;font-size:13.5px;color:#ffffff">รวม (${list.length} สัญญา)</td>
             <td class="money-cell" style="color:#ffffff;text-align:right">${fmt(subTotal)}</td>
             <td class="money-cell" style="color:#34d399;text-align:right">${fmt(subPaid)}</td>
             <td class="money-cell" style="color:#fbbf24;text-align:right">${fmt(subBilled)}</td>
             <td class="money-cell" style="color:#f87171;text-align:right">${fmt(subUnbilled)}</td>
             <td style="text-align:center;color:#ffffff">${subPct}%</td>
-            <td style="color:#94a3b8;font-size:12px">สรุปตามเอกสารต้นฉบับ</td>
+            <td style="color:#cbd5e1;font-size:12px">สรุปตามเอกสารต้นฉบับ</td>
           </tr>
         </tfoot>
       </table>
