@@ -1116,7 +1116,7 @@ function scurve() {
       </div>`
     )}
     <div class="luxury-card" style="padding:0;overflow:hidden">
-      <iframe src="assets/Glenalmond_SCurve_Report.html" title="Glenalmond S-Curve" style="width:100%;height:2200px;border:none;display:block"></iframe>
+      <iframe src="assets/Glenalmond_SCurve_Report.html?v=5" title="Glenalmond S-Curve" style="width:100%;height:2200px;border:none;display:block"></iframe>
     </div>
   `;
 }
