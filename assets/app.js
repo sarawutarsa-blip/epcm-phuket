@@ -1277,11 +1277,10 @@ function renderContractorContractsBody() {
             <div class="bar-fill" style="width:${pct}%"></div>
           </div>
         </td>
-        <td style="font-size:12px">
+        <td style="font-size:12px;text-align:center">
           ${isClosed 
-            ? `<span class="status-pill paid" style="margin-bottom:4px">Close</span>` 
-            : `<span class="status-pill open" style="margin-bottom:4px">Open</span>`}
-          ${c.note ? `<div style="color:var(--slate-500);font-size:11.5px;margin-top:2px">${c.note}</div>` : ''}
+            ? `<span class="status-pill paid" style="padding:3px 10px">Close</span>` 
+            : `<span class="status-pill open" style="padding:3px 10px">Open</span>`}
         </td>
       </tr>
     `;
@@ -1670,7 +1669,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
                   <th style="text-align:right;width:130px;color:#d97706">วางบิลรอจ่าย</th>
                   <th style="text-align:right;width:120px;color:#64748b">ยังไม่วางบิล</th>
                   <th style="text-align:center;width:80px">% จ่าย</th>
-                  <th style="width:140px">สถานะ / หมายเหตุ</th>
+                  <th style="text-align:center;width:130px">สถานะสัญญา</th>
                   <th style="text-align:center;width:105px">งวดงาน</th>
                 </tr>
               </thead>
@@ -1678,7 +1677,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
                 ${filteredContracts.map(c => {
                   const cInsts = installments.filter(inRow => inRow.contractNo === c.no);
                   const pct = c.value ? ((c.paid / c.value) * 100).toFixed(1) : 0;
-                  const isClosed = c.note && c.note.toLowerCase().includes('close');
+                  const isClosed = (c.status && c.status.toLowerCase().includes('close')) || (c.unbilled === 0 && c.billed === 0 && c.paid > 0);
                   return `
                     <tr style="cursor:pointer;${isClosed ? 'background:#fcfdfd' : ''}" onclick="toggleContractDrawer(${c.no})">
                       <td style="text-align:center;font-weight:700;color:var(--slate-500)">${c.no}</td>
@@ -1697,8 +1696,8 @@ function payment(initialVendor = '', activeTab = 'summary') {
                       <td style="text-align:center">
                         <span style="font-weight:700;color:${pct >= 100 ? '#16a34a' : 'var(--navy-850)'}">${pct}%</span>
                       </td>
-                      <td>
-                        ${c.note ? `<span class="status-pill ${isClosed ? 'paid' : 'open'}" style="font-size:11.5px;padding:2px 8px">${c.note}</span>` : '<span style="color:var(--slate-400)">-</span>'}
+                      <td style="text-align:center">
+                        ${isClosed ? '<span class="status-pill paid" style="font-size:11.5px;padding:3px 10px">ปิดสัญญา (Close)</span>' : '<span class="status-pill open" style="font-size:11.5px;padding:3px 10px">กำลังทำ (Open)</span>'}
                       </td>
                       <td style="text-align:center" onclick="event.stopPropagation()">
                         <button id="btn-drawer-${c.no}" onclick="toggleContractDrawer(${c.no})" class="btn-outline" style="padding:4px 8px;font-size:11.5px;border-radius:4px">
@@ -1734,7 +1733,6 @@ function payment(initialVendor = '', activeTab = 'summary') {
                                   <tr style="border-bottom:1px solid #f1f5f9">
                                     <td style="padding:6px 8px;font-weight:500">
                                       ${inst.desc}
-                                      ${inst.note ? `<br><small style="color:var(--slate-500)">${inst.note}</small>` : ''}
                                     </td>
                                     <td style="padding:6px 8px;font-family:monospace;color:var(--slate-700)">${inst.invoice || '-'}</td>
                                     <td style="padding:6px 8px;text-align:right;font-weight:600">${money(inst.amount)}</td>
@@ -1855,7 +1853,6 @@ function payment(initialVendor = '', activeTab = 'summary') {
                         <td style="text-align:center;font-weight:600;color:var(--slate-400)">${iIdx + 1}</td>
                         <td>
                           <div style="font-weight:600;color:var(--navy-850)">${inst.desc}</div>
-                          ${inst.note ? `<div style="font-size:11px;color:var(--slate-500);margin-top:2px">${inst.note}</div>` : ''}
                         </td>
                         <td style="font-family:monospace;font-size:12px;color:var(--slate-700)">${inst.invoice || '-'}</td>
                         <td class="money-cell" style="font-weight:600">${money(inst.amount)}</td>
