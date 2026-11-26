@@ -31,53 +31,210 @@ function parseGSheetCSV(text) {
   return lines;
 }
 
-async function syncPaymentFromGoogleSheet(customUrl = null) {
-  const targetUrl = customUrl || localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL || '';
-  if (!targetUrl) return false;
+function parseNum(s) {
+  if (!s) return 0;
+  const clean = String(s).replace(/[^\d.-]/g, '');
+  const val = parseFloat(clean);
+  return isNaN(val) ? 0 : val;
+}
 
+function updateSyncUI() {
+  const pill = document.getElementById('gsheetLivePill');
+  const pillText = document.getElementById('gsheetLivePillText');
+  if (!pill || !pillText) return;
+
+  if (window.gsheetSyncStatus && window.gsheetSyncStatus.synced) {
+    const timeStr = window.gsheetSyncStatus.lastSync.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    pill.style.display = 'inline-flex';
+    pill.className = 'stat-pill success';
+    pill.title = `เชื่อมต่อสดกับ Google Sheets (ซิงค์เมื่อ ${timeStr}) - คลิกเพื่อซิงค์ใหม่`;
+    pillText.innerHTML = `🟢 Google Sheet Live <b>${timeStr}</b>`;
+  } else {
+    pill.style.display = 'inline-flex';
+    pill.className = 'stat-pill';
+    pill.title = 'ใช้ข้อมูลแคชล่าสุด - คลิกเพื่อเชื่อมต่อ Google Sheet';
+    pillText.innerHTML = `⚪ Local Data`;
+  }
+}
+
+async function syncPaymentFromGoogleSheet(isManual = false) {
+  const targetUrl = localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL || 'https://docs.google.com/spreadsheets/d/1qKr7ahiBiUv4iDS02g96w1D7N1O8lJf44z1U0vo4gMA/edit';
   const match = targetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
   const sheetId = match ? match[1] : targetUrl.trim();
   if (!sheetId) return false;
 
-  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
   try {
-    const res = await fetch(csvUrl);
+    const res = await fetch(csvUrl, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     const rows = parseGSheetCSV(text);
-    if (rows.length < 2) throw new Error('Data rows empty');
+    if (!rows || rows.length < 5) throw new Error('Data rows empty or invalid format');
 
-    const dataRows = rows.slice(1).filter(r => r.length >= 4 && r[1] && r[1].trim());
-    if (dataRows.length === 0) throw new Error('No valid rows found');
+    const contracts = [];
+    const installments = [];
+    let currContract = null;
 
-    const newReport = dataRows.map(r => [
-      r[0] ? r[0].trim() : '',
-      r[1] ? r[1].trim() : '',
-      r[2] ? r[2].trim() : '',
-      r[3] ? r[3].trim() : '0',
-      r[4] ? r[4].trim() : '',
-      parseInt(r[5]) || 0
-    ]);
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r || r.length < 4) continue;
+      const col0 = (r[0] || '').trim();
 
-    window.paymentReport = newReport;
+      if (col0.startsWith('สัญญาที่')) {
+        const noMatch = col0.match(/\d+/);
+        const cNo = noMatch ? parseInt(noMatch[0]) : (contracts.length + 1);
+        const vendor = (r[1] || '').trim();
+        const work = (r[2] || '').trim();
+        const val = parseNum(r[3]);
+        const status = (r[4] || '').trim();
+        const ref = (r[5] || '').trim();
+        const note = (r[7] || '').trim();
+
+        currContract = {
+          no: cNo,
+          vendor: vendor,
+          work: work,
+          value: val,
+          status: status,
+          contractNo: ref,
+          po: ref,
+          note: note,
+          installments: []
+        };
+        contracts.push(currContract);
+      } else if (col0.startsWith('งวดที่') && currContract) {
+        const desc = (r[1] || '').trim();
+        const amt = parseNum(r[3]);
+        const st = (r[4] || '').trim();
+        const inv = (r[5] || '').trim();
+        const due = (r[6] || '').trim();
+        const n = (r[7] || '').trim();
+
+        let stdStatus = 'ยังไม่วางบิล';
+        if ((st.includes('ชำระแล้ว') || st.includes('จ่ายเงินแล้ว') || st === 'จ่ายแล้ว') && !st.includes('ยังไม่') && !st.includes('รอ')) {
+          stdStatus = 'จ่ายเงินแล้ว';
+        } else if (st.includes('วางบิล') || st.includes('รอชำระ') || st.includes('ยังไม่จ่าย')) {
+          stdStatus = 'วางบิลแล้ว (ยังไม่จ่ายเงิน)';
+        }
+
+        const instObj = {
+          contractNo: currContract.no,
+          vendor: currContract.vendor,
+          desc: desc,
+          amount: amt,
+          invoice: inv === '-' ? '' : inv,
+          exVat: amt,
+          incVat: amt * 1.07,
+          wht: amt * 0.03,
+          retention: 0,
+          netTransfer: amt,
+          credit: '',
+          dueDate: due === '-' ? '' : due,
+          status: stdStatus,
+          taxReceipt: '',
+          note: n
+        };
+        currContract.installments.push(instObj);
+        installments.push(instObj);
+      }
+    }
+
+    if (contracts.length === 0) throw new Error('No contracts parsed from Google Sheet');
+
+    const newJobs = [];
+    contracts.forEach(c => {
+      const insts = c.installments || [];
+      const val = c.value || 0;
+      let cPaid = 0;
+      let cBilled = 0;
+      let cUnbilled = 0;
+
+      if (insts.length > 0) {
+        cPaid = insts.filter(i => i.status === 'จ่ายเงินแล้ว').reduce((s, i) => s + (i.amount || 0), 0);
+        cBilled = insts.filter(i => i.status === 'วางบิลแล้ว (ยังไม่จ่ายเงิน)').reduce((s, i) => s + (i.amount || 0), 0);
+
+        const isClosedActual = c.note.includes('เรียกเก็บตามจริง') || (c.status.toLowerCase().includes('close') && cBilled === 0 && cPaid > 0);
+        const unbilledInsts = insts.filter(i => i.status === 'ยังไม่วางบิล');
+        if (unbilledInsts.length > 0) {
+          cUnbilled = unbilledInsts.reduce((s, i) => s + (i.amount || 0), 0);
+        } else if (isClosedActual) {
+          cUnbilled = 0;
+        } else {
+          cUnbilled = Math.max(0, val - cPaid - cBilled);
+        }
+      } else {
+        const mPaid = c.note.match(/ชำระแล้ว\s*฿([\d,.]+)/);
+        const mBill = c.note.match(/รอจ่าย\s*฿([\d,.]+)/);
+        const mUnb = c.note.match(/คงเหลือ\s*฿([\d,.]+)/);
+        cPaid = mPaid ? parseNum(mPaid[1]) : (c.status.toLowerCase().includes('close') ? val : 0);
+        cBilled = mBill ? parseNum(mBill[1]) : 0;
+        cUnbilled = mUnb ? parseNum(mUnb[1]) : Math.max(0, val - cPaid - cBilled);
+      }
+
+      c.paid = cPaid;
+      c.billed = cBilled;
+      c.unbilled = cUnbilled;
+
+      const isClosed = (cUnbilled === 0 && cBilled === 0 && cPaid > 0) || c.note.includes('Close') || c.status.includes('ปิดสัญญา');
+      const jobStatus = isClosed ? (c.note.includes('เรียกเก็บตามจริง') ? 'Close / เรียกเก็บตามจริง ส่วนที่เหลือยกเลิก' : 'Close') : 'Open';
+
+      newJobs.push([
+        c.vendor,
+        c.work,
+        c.value,
+        c.paid,
+        c.billed,
+        c.unbilled,
+        jobStatus
+      ]);
+    });
+
+    window.paymentContracts = contracts;
+    window.paymentInstallments = installments;
+    if (typeof jobs !== 'undefined' && Array.isArray(jobs)) {
+      jobs.length = 0;
+      jobs.push(...newJobs);
+    }
+
     window.gsheetSyncStatus = {
       synced: true,
       lastSync: new Date(),
-      rowCount: newReport.length,
+      contractCount: contracts.length,
+      installmentCount: installments.length,
       url: targetUrl.startsWith('http') ? targetUrl : `https://docs.google.com/spreadsheets/d/${sheetId}/edit`,
       sheetId: sheetId
     };
+
+    updateSyncUI();
+    console.log(`✅ Google Sheet Live Sync: ${contracts.length} contracts, ${installments.length} installments loaded.`);
+
+    if (isManual) {
+      const cur = document.querySelector('.nav-link.active')?.dataset.page || 'Dashboard';
+      if (cur === 'Dashboard') dashboard();
+      else if (cur === 'Payment') payment();
+      else if (cur === 'Contractor Contract') contractorContract();
+      else if (cur === 'Cost Summary') cost();
+      alert(`✅ ซิงค์ข้อมูลสดจาก Google Sheet สำเร็จ!\n- สัญญา: ${contracts.length} สัญญา\n- งวดงาน: ${installments.length} งวดงาน\n(ข้อมูลบนหน้าเว็บอัปเดตเรียลไทม์แล้ว)`);
+    }
     return true;
   } catch (err) {
-    console.warn('Google Sheets sync notice (using local payment-data.js):', err.message);
+    console.warn('Google Sheets live sync notice (using local cache):', err.message);
     window.gsheetSyncStatus = {
       synced: false,
       error: err.message,
+      lastSync: new Date(),
       url: targetUrl
     };
+    updateSyncUI();
+    if (isManual) {
+      alert(`⚠️ ไม่สามารถซิงค์ข้อมูลจาก Google Sheet ได้: ${err.message}\n(ระบบใช้งานข้อมูลแคชล่าสุด)`);
+    }
     return false;
   }
 }
+
+window.syncPaymentFromGoogleSheet = syncPaymentFromGoogleSheet;
+window.refreshPaymentFromGoogleSheet = syncPaymentFromGoogleSheet;
 
 async function configurePaymentGSheet() {
   const current = localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL || '';
@@ -2406,12 +2563,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   initNav();
   dashboard();
-  if (localStorage.getItem('epcm_gsheet_payment_url') || window.GOOGLE_SHEETS_PAYMENT_URL) {
-    const synced = await syncPaymentFromGoogleSheet();
+  
+  // Auto-sync live data from Google Sheet in background
+  syncPaymentFromGoogleSheet().then(synced => {
     if (synced) {
-      const cur = document.querySelector('.nav-link.active')?.dataset.page;
-      if (cur === 'Payment') payment();
+      const cur = document.querySelector('.nav-link.active')?.dataset.page || 'Dashboard';
+      if (cur === 'Dashboard') dashboard();
+      else if (cur === 'Payment') payment();
       else if (cur === 'Contractor Contract') contractorContract();
+      else if (cur === 'Cost Summary') cost();
     }
-  }
+  });
 });
