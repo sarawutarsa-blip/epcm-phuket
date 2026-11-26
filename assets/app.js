@@ -913,6 +913,28 @@ function dashboard() {
       </div>
     </div>
 
+    <!-- Punch List Live Notice Banner -->
+    <div class="luxury-card" style="padding:16px 20px;margin-bottom:24px;background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);border-left:5px solid #2563eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid #bfdbfe;flex-shrink:0">
+          📋
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:14.5px;color:var(--navy-900);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span>แบบแปลน Punch List & ตรวจรับ Defect หน้างาน (Floor Plans)</span>
+            <span class="status-pill paid" style="font-size:11px;padding:3px 9px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0">🟢 อัปเดตล่าสุด: วันนี้ (26 พ.ย. 2569)</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--slate-600);margin-top:3px">
+            เปิดดูผังตรวจรับ Defect 6 แผ่น (ชั้น 1, ชั้น 2, ชั้น 3, ดาดฟ้า และผังบริเวณ Landscape) พร้อมสัญลักษณ์สีแสดงสถานะการส่งมอบพื้นที่
+          </div>
+        </div>
+      </div>
+      <button class="btn-navy" style="font-size:13px;padding:8px 18px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 4px rgba(30,41,59,0.15)" onclick="show('Punch List')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        เปิดดูแบบแปลน Defect 6 แผ่น (PDF Viewer) →
+      </button>
+    </div>
+
     <!-- S-Curve & Financial Split Grid -->
     <div class="dashboard-grid-2">
       <div class="luxury-card">
@@ -2512,18 +2534,336 @@ function drawing() {
   `;
 }
 
+const PUNCH_LIST_PLANS = [
+  {
+    id: '1st',
+    code: '1st_floor_plan',
+    name: 'ชั้น 1 (1st Floor Plan)',
+    shortName: 'ชั้น 1',
+    scope: 'งานสถาปัตยกรรมภายในอาคาร ชั้น 1 — โซนห้องเรียน Y-1, Y-2, Reception, Office, Library, Early Year K-1, Drop-off',
+    scale: '1:300',
+    src: 'assets/punch-list/1st_floor_plan.jpg',
+    pngSrc: 'assets/punch-list/1st_floor_plan.png',
+    pageNo: 1,
+    summary: {
+      completed: 'โถงทางเข้าบางส่วน / ห้องเตรียมงาน',
+      inspecting: 'ห้องเรียน K-1, โถงทางเดินหลัก, Drop-off, ห้องประชุม, ห้องพักครู',
+      pending: 'ห้องเรียน Y-1, Y-2, ห้องประชุมย่อย (กำลังแก้ไขงาน Defect)',
+      construction: 'โซนต่อเติมปลายอาคาร Y'
+    }
+  },
+  {
+    id: '2nd',
+    code: '2nd_floor_plan',
+    name: 'ชั้น 2 (2nd Floor Plan)',
+    shortName: 'ชั้น 2',
+    scope: 'งานสถาปัตยกรรมภายในอาคาร ชั้น 2 — โซนห้องเรียน Y-3, Y-4, Music & Drama, โรงอาหารนักเรียน, หอประชุม Auditorium',
+    scale: '1:300',
+    src: 'assets/punch-list/2nd_floor_plan.jpg',
+    pngSrc: 'assets/punch-list/2nd_floor_plan.png',
+    pageNo: 2,
+    summary: {
+      completed: 'ทางเชื่อมอาคารบางจุด',
+      inspecting: 'ห้องเรียน K-2, Music & Drama, Sound Practice, โรงอาหาร',
+      pending: 'ห้องเรียน Y-3, Y-4, ห้องเรียนศิลปะ, Coding Class (กำลังเก็บงาน Defect)',
+      construction: 'หอประชุมใหญ่ AUDITORIUM และเวที STAGE'
+    }
+  },
+  {
+    id: '3rd',
+    code: '3rd_floor_plan',
+    name: 'ชั้น 3 (3rd Floor Plan)',
+    shortName: 'ชั้น 3',
+    scope: 'งานสถาปัตยกรรมภายในอาคาร ชั้น 3 — โซนห้องเรียน Y-5, Y-6, ห้องแล็บวิทย์, EY Library, Breakout Arena, ห้องเรียนภาษาไทย',
+    scale: '1:300',
+    src: 'assets/punch-list/3rd_floor_plan.jpg',
+    pngSrc: 'assets/punch-list/3rd_floor_plan.png',
+    pageNo: 3,
+    summary: {
+      completed: 'โถงบันไดหนีไฟ',
+      inspecting: 'ห้องเรียน K-3, EY Library, Breakout Arena, ห้องเรียนภาษาไทย',
+      pending: 'ห้องเรียน Y-5, Y-6, ห้องเต้นรำ, ห้องแล็บวิทยาศาสตร์บางจุด',
+      construction: 'Void Above Auditorium และห้องบรรยาย'
+    }
+  },
+  {
+    id: 'roof_in',
+    code: 'roof_plan_interior',
+    name: 'ดาดฟ้าภายใน (Roof Plan Interior)',
+    shortName: 'ดาดฟ้า (ใน)',
+    scope: 'งานระบบพื้นหลังคาคอนกรีต SLAB ภายในอาคาร — ระดับ FFL+11.900 (Metal Roof Sheet & Slab)',
+    scale: '1:300',
+    src: 'assets/punch-list/roof_plan_interior.jpg',
+    pngSrc: 'assets/punch-list/roof_plan_interior.png',
+    pageNo: 4,
+    summary: {
+      completed: 'โครงสร้างหลังคาหลัก',
+      inspecting: 'พื้นคอนกรีต Slab ดาดฟ้าส่วนใหญ่ FFL+11.900',
+      pending: 'บันไดและจุดเปิดช่องบริการดาดฟ้า (กำลังตรวจสอบรอยต่อ)',
+      construction: '-'
+    }
+  },
+  {
+    id: 'roof_ex',
+    code: 'roof_plan_exterior',
+    name: 'ดาดฟ้าภายนอก (Roof Plan Exterior)',
+    shortName: 'ดาดฟ้า (นอก)',
+    scope: 'งานภายนอกอาคาร — ระบบกันซึมขอบหลังคาคอนกรีต SLAB และแนวระบายน้ำ — ระดับ FFL+11.900',
+    scale: '1:300',
+    src: 'assets/punch-list/roof_plan_exterior.jpg',
+    pngSrc: 'assets/punch-list/roof_plan_exterior.png',
+    pageNo: 5,
+    summary: {
+      completed: 'ติดตั้งแผ่น Metal Sheet',
+      inspecting: 'แนวรางระบายน้ำด้านหน้าอาคาร',
+      pending: 'แนวรอยต่อขอบหลังคาและรางระบายน้ำภายนอกอาคาร',
+      construction: '-'
+    }
+  },
+  {
+    id: 'landscape',
+    code: 'landscape_hardscape',
+    name: 'ผังบริเวณ (Landscape & Hardscape)',
+    shortName: 'ผังบริเวณ',
+    scope: 'งานผังบริเวณภายนอก — ถนนทางเข้าหลัก, Drop-off, วงเวียน, ที่จอดรถ, ป้อมยาม และงานปรับพื้นที่',
+    scale: '1:300',
+    src: 'assets/punch-list/landscape_hardscape.jpg',
+    pngSrc: 'assets/punch-list/landscape_hardscape.png',
+    pageNo: 6,
+    summary: {
+      completed: 'แนวเขตที่ดินบางส่วน',
+      inspecting: 'ถนนโค้งทางเข้าหลัก Drop-off, วงเวียน และลานจอดรถหน้าอาคาร',
+      pending: 'งานทางเท้าและผิวขอบถนนบางช่วง',
+      construction: 'ป้อมยามทางเข้า IN/OUT, ถนนสาธารณะ และห้องช่าง'
+    }
+  }
+];
+
+window.punchListState = window.punchListState || { activeIndex: 0, zoom: 100 };
+
+window.switchPunchPlan = function(index) {
+  window.punchListState.activeIndex = index;
+  window.punchListState.zoom = 100;
+  punch();
+};
+
+window.zoomPunchImage = function(delta) {
+  const current = window.punchListState.zoom;
+  let next = current + delta;
+  if (next < 50) next = 50;
+  if (next > 250) next = 250;
+  window.punchListState.zoom = next;
+  const img = document.getElementById('punchDrawingImg');
+  const badge = document.getElementById('punchZoomBadge');
+  if (img) img.style.width = next + '%';
+  if (badge) badge.innerText = next + '%';
+};
+
+window.resetPunchZoom = function() {
+  window.punchListState.zoom = 100;
+  const img = document.getElementById('punchDrawingImg');
+  const badge = document.getElementById('punchZoomBadge');
+  if (img) img.style.width = '100%';
+  if (badge) badge.innerText = '100%';
+};
+
 function punch() {
-  const buildings = ['Building B1 (อาคารประถม)', 'Building B2 (อาคารมัธยม & หอประชุม)', 'Building B3 (อาคารวิทยาศาสตร์ & ห้องสมุด)'];
+  const activeIdx = window.punchListState.activeIndex || 0;
+  const plan = PUNCH_LIST_PLANS[activeIdx] || PUNCH_LIST_PLANS[0];
+  const zoom = window.punchListState.zoom || 100;
+
+  // Format today's date dynamically in Thai
+  const today = new Date();
+  const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const todayThai = `${today.getDate()} ${thaiMonths[today.getMonth()]} ${today.getFullYear() + 543}`;
+
   document.getElementById('screen').innerHTML = `
-    ${banner('Defect & Punch List', 'รายการตรวจสอบข้อบกพร่องและส่งมอบพื้นที่รายอาคาร')}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));gap:16px">
-      ${buildings.map(b => `
-        <div class="luxury-card" style="padding:24px;border-left:4px solid var(--navy-850)">
-          <span class="status-pill paid" style="float:right">Active</span>
-          <strong style="font-size:18px;color:var(--navy-850);display:block;margin-bottom:6px">${b}</strong>
-          <p style="font-size:13px;color:var(--slate-500)">การตรวจรับพื้นที่ร่วมกันระหว่าง EPCM, ผู้รับเหมา และเจ้าของโครงการ</p>
+    ${banner(
+      'Defect & Punch List Plans',
+      'แผนที่ความคืบหน้าการตรวจรับ Defect และส่งมอบพื้นที่รายชั้น (Interactive Floor Plan Viewer)',
+      `<div class="stat-pill success" style="font-size:12.5px;padding:6px 14px"><span class="live-pulse"></span> ข้อมูลสถานะ Defect: <b>วันนี้ (${todayThai})</b></div>`
+    )}
+
+    <!-- Live Notice Alert Banner -->
+    <div class="luxury-card" style="padding:16px 20px;margin-bottom:20px;background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);border-left:5px solid #2563eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid #bfdbfe;flex-shrink:0">
+          📌
         </div>
-      `).join('')}
+        <div>
+          <div style="font-weight:700;font-size:14.5px;color:var(--navy-900);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span>สถานะการตรวจรับ Defect & Punch List หน้างาน</span>
+            <span class="status-pill paid" style="font-size:11.5px;padding:3px 10px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0">
+              🟢 อัปเดตล่าสุด: วันนี้ (${todayThai})
+            </span>
+          </div>
+          <div style="font-size:12.5px;color:var(--slate-600);margin-top:4px">
+            ตรวจสอบร่วมกันระหว่างทีมวิศวกร EPCM, ผู้รับเหมา และ Owner · รวมแบบแปลนครบทั้ง 6 แผ่น (ชั้น 1-3, ดาดฟ้า และผังบริเวณ)
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="assets/punch-list/Glenalmond_Phuket_Punch_List.pdf" target="_blank" class="btn-navy" style="font-size:12.5px;padding:7px 14px;border-radius:7px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          เปิดไฟล์ PDF ต้นฉบับ ↗
+        </a>
+        <a href="${plan.src}" target="_blank" class="btn-outline" style="font-size:12.5px;padding:7px 14px;border-radius:7px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+          🔍 ดูภาพขยายเต็มจอ ↗
+        </a>
+      </div>
+    </div>
+
+    <!-- Status Legend Bar (Directly from official drawings) -->
+    <div class="luxury-card" style="padding:14px 20px;margin-bottom:20px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.02)">
+      <div style="font-size:12px;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">
+        STATUS LEGEND · สัญลักษณ์สีแสดงสถานะการตรวจรับงานตามแบบแปลน
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+          <span style="width:18px;height:18px;border-radius:4px;background:#4ade80;box-shadow:0 1px 2px rgba(0,0,0,0.1);display:inline-block;flex-shrink:0"></span>
+          <div>
+            <b style="font-size:13px;color:#166534;display:block">ส่งมอบแล้ว</b>
+            <span style="font-size:11px;color:#15803d">Handed Over / Completed</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f7fee7;border:1px solid #d9f99d;border-radius:8px">
+          <span style="width:18px;height:18px;border-radius:4px;background:#bef264;border:1px solid #a3e635;display:inline-block;flex-shrink:0"></span>
+          <div>
+            <b style="font-size:13px;color:#3f6212;display:block">อยู่ระหว่างตรวจ Defect</b>
+            <span style="font-size:11px;color:#4d7c0f">Defect Inspection in Progress</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:8px">
+          <span style="width:18px;height:18px;border-radius:4px;background:#f472b6;box-shadow:0 1px 2px rgba(0,0,0,0.1);display:inline-block;flex-shrink:0"></span>
+          <div>
+            <b style="font-size:13px;color:#9d174d;display:block">ดำเนินการยังไม่เรียบร้อย</b>
+            <span style="font-size:11px;color:#be185d">Pending Defect Rectification</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px">
+          <span style="width:18px;height:18px;border-radius:4px;background:#ef4444;box-shadow:0 1px 2px rgba(0,0,0,0.1);display:inline-block;flex-shrink:0"></span>
+          <div>
+            <b style="font-size:13px;color:#991b1b;display:block">อยู่ระหว่างดำเนินการก่อสร้าง</b>
+            <span style="font-size:11px;color:#b91c1c">Under Construction</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Drawing Viewer Card -->
+    <div class="luxury-card" style="padding:0;overflow:hidden;border:1px solid #cbd5e1;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 16px rgba(0,0,0,0.06)">
+      <!-- Viewer Top Toolbar -->
+      <div style="background:#1e293b;padding:12px 18px;color:#ffffff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1px solid #334155">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:16px;font-weight:700;color:#f8fafc;display:flex;align-items:center;gap:8px">
+            <span>📑</span>
+            <span>${plan.name}</span>
+          </span>
+          <span style="background:#334155;color:#94a3b8;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600">
+            Scale ${plan.scale} · แผ่นที่ ${plan.pageNo}/6
+          </span>
+        </div>
+
+        <!-- Zoom Controls -->
+        <div style="display:flex;align-items:center;gap:6px;background:#0f172a;padding:4px 8px;border-radius:8px;border:1px solid #334155">
+          <button style="background:#1e293b;color:#ffffff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-weight:700;font-size:13px" onclick="zoomPunchImage(-20)" title="ย่อภาพ (Zoom Out)">−</button>
+          <span id="punchZoomBadge" style="font-size:12px;font-weight:700;color:#38bdf8;min-width:42px;text-align:center">${zoom}%</span>
+          <button style="background:#1e293b;color:#ffffff;border:none;border-radius:4px;padding:4px 10px;cursor:pointer;font-weight:700;font-size:13px" onclick="zoomPunchImage(20)" title="ขยายภาพ (Zoom In)">+</button>
+          <button style="background:#1e293b;color:#94a3b8;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:11px;margin-left:4px" onclick="resetPunchZoom()" title="รีเซ็ตพอดีหน้าจอ">100%</button>
+        </div>
+      </div>
+
+      <!-- Floor Navigation Tabs -->
+      <div style="background:#f1f5f9;padding:8px 14px;display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #e2e8f0">
+        ${PUNCH_LIST_PLANS.map((p, idx) => `
+          <button onclick="switchPunchPlan(${idx})" style="
+            padding:7px 14px;
+            font-size:12.5px;
+            font-weight:${idx === activeIdx ? '700' : '500'};
+            color:${idx === activeIdx ? '#ffffff' : '#334155'};
+            background:${idx === activeIdx ? '#0f172a' : '#ffffff'};
+            border:1px solid ${idx === activeIdx ? '#0f172a' : '#cbd5e1'};
+            border-radius:6px;
+            cursor:pointer;
+            white-space:nowrap;
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            box-shadow:${idx === activeIdx ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'}
+          ">
+            <span>${idx + 1}.</span>
+            <span>${p.shortName}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      <!-- Drawing Canvas Area -->
+      <div style="background:#334155;padding:16px;overflow:auto;max-height:75vh;text-align:center;position:relative">
+        <div style="display:inline-block;transition:all 0.15s ease;width:${zoom}%;min-width:320px">
+          <img id="punchDrawingImg" src="${plan.src}" alt="${plan.name}" style="
+            width:100%;
+            height:auto;
+            display:block;
+            border-radius:6px;
+            box-shadow:0 6px 20px rgba(0,0,0,0.3);
+            background:#ffffff;
+            cursor:zoom-in;
+          " onclick="zoomPunchImage(30)" title="คลิกที่รูปเพื่อขยายซูม">
+        </div>
+      </div>
+
+      <!-- Drawing Scope & Floor Summary Details -->
+      <div style="background:#f8fafc;padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="max-width:800px">
+          <div style="font-size:13px;font-weight:700;color:var(--navy-900);margin-bottom:2px">
+            ขอบเขตพื้นที่: ${plan.scope}
+          </div>
+          <div style="font-size:12px;color:var(--slate-500)">
+            💡 คำแนะนำ: สามารถคลิกที่รูปเพื่อซูมขยาย หรือใช้ปุ่ม + / − ด้านบนขวาเพื่อดูรายละเอียดห้องและตำแหน่ง Defect
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-outline" style="font-size:12px;padding:6px 12px" onclick="switchPunchPlan(${(activeIdx + 5) % 6})">
+            ← แผ่นก่อนหน้า
+          </button>
+          <button class="btn-navy" style="font-size:12px;padding:6px 14px" onclick="switchPunchPlan(${(activeIdx + 1) % 6})">
+            แผ่นถัดไป →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 Thumbnail Cards Preview Strip -->
+    <div style="margin-bottom:30px">
+      <div style="font-size:14px;font-weight:700;color:var(--navy-900);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+        <span>📑 รายการแบบแปลนทั้ง 6 แผ่น (คลิกเพื่อเปิดดูทันที)</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:14px">
+        ${PUNCH_LIST_PLANS.map((p, idx) => `
+          <div onclick="switchPunchPlan(${idx})" class="luxury-card" style="
+            padding:10px;
+            cursor:pointer;
+            border:2px solid ${idx === activeIdx ? '#2563eb' : 'transparent'};
+            background:${idx === activeIdx ? '#f0f9ff' : '#ffffff'};
+            transition:all 0.2s ease;
+            display:flex;
+            flex-direction:column;
+            gap:8px
+          ">
+            <div style="position:relative;border-radius:6px;overflow:hidden;background:#e2e8f0;aspect-ratio:1.4/1">
+              <img src="${p.src}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;display:block">
+              <span style="position:absolute;top:6px;left:6px;background:rgba(15,23,42,0.85);color:#ffffff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">
+                แผ่นที่ ${p.pageNo}
+              </span>
+              ${idx === activeIdx ? '<span style="position:absolute;top:6px;right:6px;background:#2563eb;color:#ffffff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px">กำลังดู</span>' : ''}
+            </div>
+            <div>
+              <b style="font-size:13px;color:var(--navy-900);display:block">${p.name}</b>
+              <span style="font-size:11px;color:var(--slate-500);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.scope}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
