@@ -219,12 +219,13 @@ async function syncPaymentFromGoogleSheet(isManual = false) {
     updateSyncUI();
     console.log(`✅ Google Sheet Live Sync: ${contracts.length} contracts, ${installments.length} installments loaded.`);
 
+    const cur = document.querySelector('.nav-link.active')?.dataset.page || 'Dashboard';
+    if (cur === 'Dashboard') dashboard();
+    else if (cur === 'Payment') payment();
+    else if (cur === 'Contractor Contract') contractorContract();
+    else if (cur === 'Cost Summary') cost();
+
     if (isManual) {
-      const cur = document.querySelector('.nav-link.active')?.dataset.page || 'Dashboard';
-      if (cur === 'Dashboard') dashboard();
-      else if (cur === 'Payment') payment();
-      else if (cur === 'Contractor Contract') contractorContract();
-      else if (cur === 'Cost Summary') cost();
       alert(`✅ ซิงค์ข้อมูลสดจาก Google Sheet สำเร็จ!\n- สัญญา: ${contracts.length} สัญญา\n- งวดงาน: ${installments.length} งวดงาน\n(ข้อมูลบนหน้าเว็บอัปเดตเรียลไทม์แล้ว)`);
     }
     return true;
