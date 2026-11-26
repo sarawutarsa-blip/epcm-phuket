@@ -26,9 +26,11 @@
   --slate-900: #0f172a;
 
   --emerald-500: #10b981;
+  --emerald-600: #059669;
   --emerald-50: #ecfdf5;
   --emerald-700: #047857;
   --amber-500: #f59e0b;
+  --amber-600: #d97706;
   --amber-50: #fffbeb;
   --amber-700: #b45309;
   --rose-500: #ef4444;
@@ -684,18 +686,18 @@ body {
 
 /* Progress bar */
 .bar-track {
-  height: 6px;
-  background: var(--slate-100);
-  border-radius: 8px;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 6px;
   overflow: hidden;
   width: 100%;
-  min-width: 70px;
+  min-width: 60px;
 }
 
 .bar-fill {
   height: 100%;
   background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-  border-radius: 8px;
+  border-radius: 6px;
   transition: width 0.3s ease;
 }
 

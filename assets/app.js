@@ -286,7 +286,8 @@ function renderJobsTable(data) {
     const items = groupMap.get(vendor);
     const vendorTotal = items.reduce((s, x) => s + (x[2] || 0), 0);
     const vendorPaid = items.reduce((s, x) => s + (x[3] || 0), 0);
-    const vendorProgress = vendorTotal > 0 ? ((vendorPaid / vendorTotal) * 100).toFixed(1) : '0.0';
+    const isVendorClosed = items.every(x => String(x[6]).startsWith('Close'));
+    const vendorProgress = isVendorClosed ? '100.0' : (vendorTotal > 0 ? ((vendorPaid / vendorTotal) * 100).toFixed(1) : '0.0');
 
     // Group Header Row for this Contractor
     rowsHtml += `
@@ -316,13 +317,13 @@ function renderJobsTable(data) {
         <tr class="${x[6] === 'Close' ? 'closed' : ''}" style="${idx === items.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : ''}">
           <td style="padding-left:24px">
             <span style="color:${isSub ? 'var(--slate-500)' : 'var(--navy-850)'};font-size:12.5px;display:inline-flex;align-items:center;gap:6px">
-              ${isSub ? `<span style="color:#94a3b8;font-weight:bold">↳ งานที่ ${idx + 1}:</span>` : ''}
+              ${isSub ? `<span style="color:var(--slate-500);font-weight:600">งานที่ ${idx + 1}:</span>` : ''}
               <b>${x[0]}</b>
             </span>
           </td>
           <td>
             <button class="btn-outline" style="padding:4px 10px;font-size:12.5px" onclick="jumpToPayment('${x[0]}')">
-              ${x[1]} ↗
+              ${x[1]}
             </button>
           </td>
           <td class="money-cell">${fmt(x[2])}</td>
@@ -681,8 +682,8 @@ function dashboard() {
     const cPaid = rows.reduce((s, x) => s + x[3], 0);
     const cBill = rows.reduce((s, x) => s + x[4], 0);
     const cUnbill = rows.reduce((s, x) => s + x[5], 0);
-    const cPaidPct = cTotal > 0 ? (cPaid / cTotal) * 100 : 0;
     const allClosed = rows.every(x => String(x[6]).startsWith('Close'));
+    const cPaidPct = (allClosed && cUnbill === 0 && cBill === 0) ? 100 : (cTotal > 0 ? (cPaid / cTotal) * 100 : 0);
     return {
       index: i,
       name,
@@ -857,10 +858,10 @@ function dashboard() {
                   <td class="money-cell" style="color:var(--rose-700)">${fmt(c.unbill)}</td>
                   <td style="text-align:center">
                     <div style="display:flex;align-items:center;gap:6px;justify-content:center">
-                      <div class="bar-track" style="width:55px">
-                        <div class="bar-fill" style="width:${c.paidPct}%;background:${c.paidPct >= 100 ? 'var(--emerald-600)' : 'var(--amber-600)'}"></div>
+                      <div class="bar-track" style="width:65px;height:8px;background:#e2e8f0!important;border-radius:4px;overflow:hidden;display:inline-block">
+                        <div class="bar-fill" style="width:${Math.min(100, Math.max(0, c.paidPct))}%;height:100%;background:${c.paidPct >= 99.9 ? '#10b981' : (c.paidPct >= 50 ? '#2563eb' : '#f59e0b')}!important;border-radius:4px;display:block"></div>
                       </div>
-                      <b style="font-size:12px;color:var(--navy-800)">${c.paidPct.toFixed(1)}%</b>
+                      <b style="font-size:12px;color:${c.paidPct >= 99.9 ? '#059669' : '#1e293b'}">${c.paidPct.toFixed(1)}%</b>
                     </div>
                   </td>
                 </tr>
@@ -869,14 +870,14 @@ function dashboard() {
             <tfoot>
               <tr>
                 <td style="text-align:center;font-weight:700">Σ</td>
-                <td style="font-weight:700;color:var(--navy-900)">รวมทั้งสิ้น (${companySummaries.length} บริษัท · 28 สัญญา)</td>
+                <td style="font-weight:700;color:var(--navy-900)">รวมทั้งสิ้น (${companySummaries.length} บริษัท · ${window.paymentContracts ? window.paymentContracts.length : jobs.length} สัญญา)</td>
                 <td class="money-cell" style="font-weight:700">${fmt(total)}</td>
                 <td class="money-cell" style="font-weight:700;color:var(--emerald-700)">${fmt(paid)}</td>
                 <td class="money-cell" style="font-weight:700;color:var(--rose-700)">${fmt(unbill)}</td>
                 <td style="text-align:center;font-weight:700">
                   <div style="display:flex;align-items:center;gap:6px;justify-content:center">
-                    <div class="bar-track" style="width:55px">
-                      <div class="bar-fill" style="width:${((paid / total) * 100).toFixed(1)}%;background:var(--emerald-600)"></div>
+                    <div class="bar-track" style="width:65px;height:8px;background:#e2e8f0!important;border-radius:4px;overflow:hidden;display:inline-block">
+                      <div class="bar-fill" style="width:${Math.min(100, Math.max(0, (paid / total) * 100))}%;height:100%;background:#10b981!important;border-radius:4px;display:block"></div>
                     </div>
                     <b style="font-size:12px;color:var(--emerald-800)">${((paid / total) * 100).toFixed(1)}%</b>
                   </div>
@@ -934,11 +935,11 @@ function contractors() {
   
   const cardsHtml = names.map(name => {
     const list = jobs.filter(x => x[0] === name);
-    const closed = list.filter(x => x[6] === 'Close').length;
+    const closed = list.filter(x => String(x[6]).startsWith('Close')).length;
     const open = list.length - closed;
     const totalVal = list.reduce((s, x) => s + x[2], 0);
-    const completedVal = list.reduce((s, x) => s + (x[6] === 'Close' ? x[2] : x[3] + x[4]), 0);
-    const progress = totalVal ? (completedVal / totalVal) * 100 : 0;
+    const completedVal = list.reduce((s, x) => s + (String(x[6]).startsWith('Close') ? x[2] : x[3] + x[4]), 0);
+    const progress = (open === 0) ? 100 : (totalVal ? (completedVal / totalVal) * 100 : 0);
 
     return `
       <div class="luxury-card" style="margin-bottom:14px">
@@ -979,7 +980,7 @@ function contractors() {
 }
 
 // -------------------------------------------------------------
-// VIEW 4: CONTRACTOR CONTRACT REGISTER (28 สัญญาหลักตามเอกสารต้นฉบับ)
+// VIEW 4: CONTRACTOR CONTRACT REGISTER (38 สัญญาหลักตามเอกสารต้นฉบับและ Memo)
 // -------------------------------------------------------------
 let contractFilterState = {
   status: 'all',
@@ -1141,7 +1142,7 @@ function contractorContract() {
   const html = `
     ${banner(
       'Contractor Contracts Register',
-      'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา 28 สัญญา อ้างอิงเอกสารสรุปต้นฉบับ (มูลค่าไม่รวม VAT)',
+      'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา ' + rawContracts.length + ' สัญญา อ้างอิงเอกสารสรุปต้นฉบับและ Memo จัดจ้าง (มูลค่าไม่รวม VAT)',
       `<div style="display:flex;gap:10px;flex-wrap:wrap">
         <a class="btn-navy" href="https://docs.google.com/spreadsheets/d/1qKr7ahiBiUv4iDS02g96w1D7N1O8lJf44z1U0vo4gMA/edit" target="_blank" rel="noopener">
           📊 เปิด Google Sheet ↗
@@ -1160,7 +1161,7 @@ function contractorContract() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
         <div class="kpi-value">${fmt(totVal)}</div>
-        <div class="kpi-subtext">รวม 28 สัญญาหลักตามต้นฉบับ</div>
+        <div class="kpi-subtext">รวม ${rawContracts.length} สัญญาตามต้นฉบับและ Memo</div>
       </div>
 
       <div class="luxury-card kpi-card green">
@@ -1207,7 +1208,7 @@ function contractorContract() {
 
           <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('sortBy', this.value)">
             <option value="vendor" selected>จัดกลุ่มตามผู้รับเหมา (ผรม. เรียงใกล้กัน)</option>
-            <option value="id">เรียงตามลำดับสัญญา (ลำดับ 1–28)</option>
+            <option value="id">เรียงตามลำดับสัญญา (ลำดับ 1–${rawContracts.length})</option>
           </select>
         </div>
 
@@ -1353,12 +1354,12 @@ function payment(initialVendor = '', activeTab = 'summary') {
   const syncStatusHtml = `
     <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:#1e293b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px 16px;border-radius:10px;margin-bottom:20px;flex-wrap:wrap">
       <span class="live-pulse" style="background:#10b981"></span>
-      <span><strong>ฐานข้อมูลทางการ (Source of Truth):</strong> ตรวจสอบตรงกับไฟล์สรุปรายงานการวางบิลต้นฉบับ 100% · ครอบคลุม 28 สัญญาหลัก 138 งวดงาน</span>
+      <span><strong>ฐานข้อมูลทางการ (Source of Truth):</strong> ตรวจสอบตรงกับไฟล์สรุปรายงานการวางบิลต้นฉบับ 100% · ครอบคลุม ${contracts.length} สัญญาหลัก ${installments.length} งวดงาน</span>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <a class="btn-gold" style="padding:6px 12px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" href="${window.GOOGLE_SHEETS_PAYMENT_URL}" target="_blank" rel="noopener">📊 เปิด Google Sheets ↗</a>
         <a class="btn-outline" style="padding:6px 12px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" href="assets/Glenalmond_Phuket_Payment_Tracker.xlsx" download>📥 ดาวน์โหลด Excel</a>
-        <button id="tabSummaryBtn" class="btn-navy" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📑 สรุปตามสัญญา (28 รายการ)</button>
-        <button id="tabInstBtn" class="btn-outline" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📋 รายละเอียดงวดงาน (138 งวด)</button>
+        <button id="tabSummaryBtn" class="btn-navy" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📑 สรุปตามสัญญา (${contracts.length} รายการ)</button>
+        <button id="tabInstBtn" class="btn-outline" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📋 รายละเอียดงวดงาน (${installments.length} งวด)</button>
       </div>
     </div>
   `;
@@ -1388,7 +1389,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
       <div class="luxury-card kpi-card">
         <div class="kpi-label">มูลค่าสัญญารวมทั้งโครงการ</div>
         <div class="kpi-value" style="font-size:24px">${money(totalVal)}</div>
-        <div class="kpi-subtext">28 สัญญาและงานสั่งจ้าง (ex VAT)</div>
+        <div class="kpi-subtext">${contracts.length} สัญญาและงานสั่งจ้าง (ex VAT)</div>
       </div>
       <div class="luxury-card kpi-card" style="border-top-color:#16a34a">
         <div class="kpi-label" style="color:#16a34a">จ่ายเงินแล้ว (Paid)</div>
@@ -1465,7 +1466,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
         <div class="luxury-card" style="padding:0;overflow:hidden">
           <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:14px 20px">
             <h2 style="font-size:16px;margin:0">
-              สรุปรายงานการวางบิลและยอดสัญญา (28 สัญญาหลัก)
+              สรุปรายงานการวางบิลและยอดสัญญา (${contracts.length} สัญญา)
               <span style="font-size:13px;font-weight:400;color:var(--slate-500);margin-left:8px">(แสดง ${filteredContracts.length} รายการ)</span>
             </h2>
             <small style="color:var(--slate-500)">* คลิกที่แถวหรือปุ่ม "ดูงวดงาน" เพื่อเปิดดูรายละเอียดงวดเงิน</small>
@@ -1678,6 +1679,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
 // VIEW 7: COST SUMMARY
 // -------------------------------------------------------------
 function cost() {
+  const contracts = window.paymentContracts || jobs;
   const total = jobs.reduce((s, x) => s + x[2], 0);
   const paid = jobs.reduce((s, x) => s + x[3], 0);
   const bill = jobs.reduce((s, x) => s + x[4], 0);
@@ -1690,8 +1692,8 @@ function cost() {
     const cPaid = rows.reduce((s, x) => s + x[3], 0);
     const cBill = rows.reduce((s, x) => s + x[4], 0);
     const cUnbill = rows.reduce((s, x) => s + x[5], 0);
-    const cPaidPct = cTotal > 0 ? (cPaid / cTotal) * 100 : 0;
     const allClosed = rows.every(x => String(x[6]).startsWith('Close'));
+    const cPaidPct = (allClosed && cUnbill === 0 && cBill === 0) ? 100 : (cTotal > 0 ? (cPaid / cTotal) * 100 : 0);
     return {
       index: i,
       name,
@@ -1721,7 +1723,7 @@ function cost() {
       <div class="luxury-card kpi-card">
         <div class="kpi-label">มูลค่างานรวมทั้งโครงการ</div>
         <div class="kpi-value">${fmt(total)}</div>
-        <div class="kpi-subtext">28 แพ็กเกจสัญญา · ${names.length} บริษัท</div>
+        <div class="kpi-subtext">${contracts.length} แพ็กเกจสัญญา · ${names.length} บริษัท</div>
       </div>
       <div class="luxury-card kpi-card green">
         <div class="kpi-label">ชำระเงินแล้ว (Paid)</div>
@@ -1750,7 +1752,7 @@ function cost() {
           <span style="font-size:12px;color:var(--slate-500)">คลิกที่แถวของบริษัทเพื่อเลื่อนลงไปดูรายละเอียดสัญญาทันที</span>
         </div>
         <div style="font-size:12px;color:var(--slate-500)">
-          รวมทั้งสิ้น <b>28 สัญญา</b>
+          รวมทั้งสิ้น <b>${contracts.length} สัญญา</b>
         </div>
       </div>
       <div class="card-body" style="padding:0">
@@ -1807,7 +1809,7 @@ function cost() {
             <tfoot>
               <tr>
                 <td colspan="2" style="color:var(--navy-850)">รวมทั้งโครงการ (Grand Total)</td>
-                <td style="text-align:center;font-weight:700">28</td>
+                <td style="text-align:center;font-weight:700">${contracts.length}</td>
                 <td class="money-cell" style="color:var(--navy-850);font-size:14px">${fmt(total)}</td>
                 <td class="money-cell" style="color:var(--emerald-700);font-size:14px">${fmt(paid)}</td>
                 <td class="money-cell" style="color:var(--amber-700);font-size:14px">${fmt(bill)}</td>
@@ -2293,7 +2295,7 @@ function epcmWorkStatus() {
                 }
                 return `
                   <tr>
-                    <td style="color:var(--slate-400)">${row[0] || '↳'}</td>
+                    <td style="color:var(--slate-400)">${row[0] || ''}</td>
                     <td><b>${row[2]}</b></td>
                     <td>${row[3] ? `<span class="leader-badge ${leaderClass(row[3])}">${row[3]}</span>` : '—'}</td>
                     <td>${row[4] || '—'}</td>
