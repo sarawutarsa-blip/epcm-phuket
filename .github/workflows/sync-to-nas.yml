@@ -31,6 +31,12 @@ jobs:
         with:
           fetch-depth: 2
 
+      # GitHub runner มีแค่ IPv4 แต่ NAS เข้าจากนอกบ้านได้ทาง IPv6 เท่านั้น -> ใช้ Cloudflare WARP เพิ่ม IPv6
+      - name: Enable IPv6 (Cloudflare WARP)
+        uses: fscarmen/warp-on-actions@v1.1
+        with:
+          stack: dual
+
       - name: Upload to NAS
         env:
           NAS_URL: ${{ secrets.NAS_URL }}
@@ -54,7 +60,7 @@ jobs:
 
           # 1) Login (QTS ต้องการรหัสแบบ base64)
           PW64=$(printf '%s' "$NAS_PASS" | base64 -w0)
-          RESP=$(curl -fsS --data-urlencode "user=$NAS_USER" --data-urlencode "pwd=$PW64" \
+          RESP=$(curl -6 --connect-timeout 30 -fsS --data-urlencode "user=$NAS_USER" --data-urlencode "pwd=$PW64" \
                  -d "serviceKey=1" "$NAS_URL/cgi-bin/authLogin.cgi")
           SID=$(echo "$RESP" | sed -n 's:.*<authSid><!\[CDATA\[\(.*\)\]\]></authSid>.*:\1:p')
           if [ -z "$SID" ]; then echo "::error::Login NAS ไม่สำเร็จ - เช็ค NAS_USER/NAS_PASS"; exit 1; fi
@@ -74,13 +80,13 @@ jobs:
             is_excluded "$f" && { echo "skip  $f"; continue; }
             dir=$(dirname "$f"); [ "$dir" = "." ] && sub="" || sub="/$dir"
             name=$(basename "$f")
-            out=$(curl -sS -F "file=@$f;filename=$name" \
+            out=$(curl -6 --connect-timeout 30 -sS -F "file=@$f;filename=$name" \
               "$API?func=upload&type=standard&sid=$SID&overwrite=1&dest_path=$(printf '%s' "$DEST$sub" | jq -sRr @uri)&progress=$(printf '%s' "$f" | tr '/' '-' | jq -sRr @uri)")
             if echo "$out" | grep -q '"status": *1'; then echo "ok    $f"; ok=$((ok+1));
             else echo "FAIL  $f -> $out"; fail=$((fail+1)); fi
           done <<< "$FILES"
 
           # 4) Logout
-          curl -fsS "$NAS_URL/cgi-bin/authLogout.cgi?sid=$SID" >/dev/null || true
+          curl -6 --connect-timeout 30 -fsS "$NAS_URL/cgi-bin/authLogout.cgi?sid=$SID" >/dev/null || true
           echo "อัปโหลดสำเร็จ $ok ไฟล์, ล้มเหลว $fail ไฟล์"
           [ "$fail" -eq 0 ]
