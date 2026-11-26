@@ -1723,10 +1723,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
                                 <tr style="background:#f1f5f9;color:var(--slate-600);text-align:left">
                                   <th style="padding:6px 8px">งวดงาน / เงื่อนไข</th>
                                   <th style="padding:6px 8px">เลขที่ใบวางบิล</th>
-                                  <th style="padding:6px 8px;text-align:right">ไม่รวม VAT</th>
-                                  <th style="padding:6px 8px;text-align:right">รวม VAT</th>
-                                  <th style="padding:6px 8px;text-align:right">หัก ณ ที่จ่าย</th>
-                                  <th style="padding:6px 8px;text-align:right">Retention</th>
+                                  <th style="padding:6px 8px;text-align:right">มูลค่า (ex VAT)</th>
                                   <th style="padding:6px 8px;text-align:right;color:#16a34a">ยอดโอนสุทธิ</th>
                                   <th style="padding:6px 8px;text-align:center">ครบกำหนด</th>
                                   <th style="padding:6px 8px;text-align:center">สถานะ</th>
@@ -1741,9 +1738,6 @@ function payment(initialVendor = '', activeTab = 'summary') {
                                     </td>
                                     <td style="padding:6px 8px;font-family:monospace;color:var(--slate-700)">${inst.invoice || '-'}</td>
                                     <td style="padding:6px 8px;text-align:right;font-weight:600">${money(inst.amount)}</td>
-                                    <td style="padding:6px 8px;text-align:right;color:var(--slate-600)">${inst.incVat > 0 ? money(inst.incVat) : '-'}</td>
-                                    <td style="padding:6px 8px;text-align:right;color:var(--slate-500)">${inst.wht > 0 ? money(inst.wht) : '-'}</td>
-                                    <td style="padding:6px 8px;text-align:right;color:var(--slate-500)">${inst.retention > 0 ? money(inst.retention) : '-'}</td>
                                     <td style="padding:6px 8px;text-align:right;font-weight:700;color:#16a34a">${inst.netTransfer > 0 ? money(inst.netTransfer) : '-'}</td>
                                     <td style="padding:6px 8px;text-align:center;color:var(--slate-600)">${inst.dueDate || '-'}</td>
                                     <td style="padding:6px 8px;text-align:center">${badge(inst.status)}</td>
@@ -1849,12 +1843,10 @@ function payment(initialVendor = '', activeTab = 'summary') {
                       <th style="width:45px;text-align:center">งวด</th>
                       <th>รายละเอียดงวดงาน / ขอบเขตงาน</th>
                       <th style="width:130px">เลขที่ใบแจ้งหนี้/INV</th>
-                      <th style="text-align:right;width:125px">มูลค่า (ex VAT)</th>
-                      <th style="text-align:right;width:125px">มูลค่า (inc VAT)</th>
-                      <th style="text-align:right;width:100px">หัก ณ ที่จ่าย</th>
-                      <th style="text-align:right;width:125px;color:#16a34a">ยอดโอนสุทธิ</th>
-                      <th style="text-align:center;width:100px">กำหนดชำระ</th>
-                      <th style="text-align:center;width:135px">สถานะ</th>
+                      <th style="text-align:right;width:130px">มูลค่า (ex VAT)</th>
+                      <th style="text-align:right;width:130px;color:#16a34a">ยอดโอนสุทธิ</th>
+                      <th style="text-align:center;width:105px">กำหนดชำระ</th>
+                      <th style="text-align:center;width:140px">สถานะ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1867,8 +1859,6 @@ function payment(initialVendor = '', activeTab = 'summary') {
                         </td>
                         <td style="font-family:monospace;font-size:12px;color:var(--slate-700)">${inst.invoice || '-'}</td>
                         <td class="money-cell" style="font-weight:600">${money(inst.amount)}</td>
-                        <td class="money-cell" style="color:var(--slate-600)">${inst.incVat > 0 ? money(inst.incVat) : '-'}</td>
-                        <td class="money-cell" style="color:var(--slate-500)">${inst.wht > 0 ? money(inst.wht) : '-'}</td>
                         <td class="money-cell" style="font-weight:700;color:#16a34a">${inst.netTransfer > 0 ? money(inst.netTransfer) : '-'}</td>
                         <td style="text-align:center;color:var(--slate-600);font-size:12px">${inst.dueDate || '-'}</td>
                         <td style="text-align:center">${badge(inst.status)}</td>
@@ -1881,7 +1871,6 @@ function payment(initialVendor = '', activeTab = 'summary') {
                         รวมเฉพาะ <strong>${group.vendor}</strong> (${group.installments.length} งวดงาน)
                       </td>
                       <td class="money-cell" style="font-size:13px;color:var(--navy-850)">${money(vTotEx)}</td>
-                      <td colspan="2"></td>
                       <td class="money-cell" style="font-size:13px;color:#16a34a">${money(vTotNet)}</td>
                       <td colspan="2"></td>
                     </tr>
