@@ -31,11 +31,27 @@ jobs:
         with:
           fetch-depth: 2
 
-      # GitHub runner มีแค่ IPv4 แต่ NAS เข้าจากนอกบ้านได้ทาง IPv6 เท่านั้น -> ใช้ Cloudflare WARP เพิ่ม IPv6
+      # GitHub runner มีแค่ IPv4 แต่ NAS เข้าจากนอกบ้านได้ทาง IPv6 เท่านั้น
+      # -> เปิดอุโมงค์ Cloudflare WARP (WireGuard) เฉพาะ IPv6 เขียนเองทั้งหมด ไม่ใช้ action ของคนนอก
+      #    (ค่าคีย์เป็นค่า WARP สาธารณะชุดเดียวกับที่ fscarmen/warp-on-actions v1.4 ใช้)
       - name: Enable IPv6 (Cloudflare WARP)
-        uses: fscarmen/warp-on-actions@v1.1
-        with:
-          stack: dual
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install --no-install-recommends wireguard-tools iproute2
+          sudo tee /etc/wireguard/warp.conf >/dev/null <<'EOF'
+          [Interface]
+          PrivateKey = cKE7LmCF61IhqqABGhvJ44jWXp8fKymcMAEVAzbDF2k=
+          Address = fd01:5ca1:ab1e:823e:e094:eb1c:ff87:1fab/128
+          MTU = 1280
+
+          [Peer]
+          PublicKey = bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
+          AllowedIPs = ::/0
+          Endpoint = engage.cloudflareclient.com:2408
+          EOF
+          sudo wg-quick up warp
+          sleep 2
+          echo "IPv6 test:"; curl -6 -sS -m 15 https://speed.cloudflare.com/meta | head -c 300; echo
 
       - name: Upload to NAS
         env:
