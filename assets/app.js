@@ -41,6 +41,7 @@ function parseNum(s) {
 function updateSyncUI() {
   const pill = document.getElementById('gsheetLivePill');
   const pillText = document.getElementById('gsheetLivePillText');
+  const pillIcon = document.getElementById('gsheetLivePillIcon');
   const topBudgetEl = document.getElementById('topBudgetPill');
 
   if (topBudgetEl && window.paymentContracts && window.paymentContracts.length > 0) {
@@ -56,13 +57,15 @@ function updateSyncUI() {
     const timeStr = window.gsheetSyncStatus.lastSync.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     pill.style.display = 'inline-flex';
     pill.className = 'stat-pill success';
-    pill.title = `เชื่อมต่อสดกับ Google Sheets (ซิงค์เมื่อ ${timeStr}) - คลิกเพื่อซิงค์ใหม่`;
-    pillText.innerHTML = `🟢 Google Sheet Live <b>${timeStr}</b>`;
+    pill.title = `ซิงค์กับ Google Sheet สำเร็จเมื่อ ${timeStr} - คลิกเพื่อสั่งซิงค์ใหม่`;
+    pillText.innerHTML = `🟢 ซิงค์แล้ว <b>${timeStr}</b>`;
+    if (pillIcon) pillIcon.style.display = 'none';
   } else {
     pill.style.display = 'inline-flex';
     pill.className = 'stat-pill';
-    pill.title = 'ใช้ข้อมูลแคชล่าสุด - คลิกเพื่อเชื่อมต่อ Google Sheet';
-    pillText.innerHTML = `⚪ Local Data`;
+    pill.title = 'ใช้ข้อมูล Master Data ล่าสุด - คลิกเมื่อต้องการสั่งซิงค์ Google Sheet';
+    pillText.innerHTML = `🔄 ซิงค์ Google Sheet`;
+    if (pillIcon) pillIcon.style.display = 'inline';
   }
 }
 
@@ -1334,14 +1337,9 @@ function contractorContract() {
     ${banner(
       'Contractor Contracts Register',
       'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา ' + rawContracts.length + ' สัญญา อ้างอิงเอกสารสรุปต้นฉบับและ Memo จัดจ้าง (มูลค่าไม่รวม VAT)',
-      `<div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn-navy" href="https://docs.google.com/spreadsheets/d/1qKr7ahiBiUv4iDS02g96w1D7N1O8lJf44z1U0vo4gMA/edit" target="_blank" rel="noopener">
-          📊 เปิด Google Sheet ↗
-        </a>
-        <a class="btn-gold" href="assets/Glenalmond_Phuket_Payment_Tracker.xlsx" download>
-          📥 ดาวน์โหลด Excel
-        </a>
-      </div>`
+      `<button class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer" onclick="syncPaymentFromGoogleSheet(true)">
+        🔄 สั่งซิงค์ Google Sheet
+      </button>`
     )}
 
     <!-- 4 KPI Cards -->
@@ -1544,11 +1542,9 @@ function payment(initialVendor = '', activeTab = 'summary') {
 
   const syncStatusHtml = `
     <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:#1e293b;background:#f8fafc;border:1px solid #e2e8f0;padding:10px 16px;border-radius:10px;margin-bottom:20px;flex-wrap:wrap">
-      <span class="live-pulse" style="background:#10b981"></span>
-      <span><strong>ฐานข้อมูลทางการ (Source of Truth):</strong> ตรวจสอบตรงกับไฟล์สรุปรายงานการวางบิลต้นฉบับ 100% · ครอบคลุม ${contracts.length} สัญญาหลัก ${installments.length} งวดงาน</span>
+      <span><strong>ฐานข้อมูลทางการ (Source of Truth):</strong> ตรวจสอบตรงกับเอกสารบัญชีและการเบิกจ่าย 100% · ครอบคลุม ${contracts.length} สัญญาหลัก ${installments.length} งวดงาน</span>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <a class="btn-gold" style="padding:6px 12px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" href="${window.GOOGLE_SHEETS_PAYMENT_URL}" target="_blank" rel="noopener">📊 เปิด Google Sheets ↗</a>
-        <a class="btn-outline" style="padding:6px 12px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" href="assets/Glenalmond_Phuket_Payment_Tracker.xlsx" download>📥 ดาวน์โหลด Excel</a>
+        <button id="manualSyncBtn" class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer" onclick="syncPaymentFromGoogleSheet(true)" title="สั่งซิงค์ข้อมูลกับ Google Sheet ด้วยตัวเอง">🔄 สั่งซิงค์ Google Sheet</button>
         <button id="tabSummaryBtn" class="btn-navy" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📑 สรุปตามสัญญา (${contracts.length} รายการ)</button>
         <button id="tabInstBtn" class="btn-outline" style="padding:6px 14px;font-size:13px;border-radius:6px;cursor:pointer">📋 รายละเอียดงวดงาน (${installments.length} งวด)</button>
       </div>
@@ -1778,7 +1774,7 @@ function payment(initialVendor = '', activeTab = 'summary') {
         </div>
       `;
     } else {
-      // Tab 2: All Installments view
+      // Tab 2: All Installments view (Grouped clearly by Vendor)
       tabSumBtn.className = 'btn-outline';
       tabInstBtn.className = 'btn-navy';
 
@@ -1786,67 +1782,115 @@ function payment(initialVendor = '', activeTab = 'summary') {
       if (v) filteredInst = filteredInst.filter(inRow => inRow.vendor === v);
       if (st) filteredInst = filteredInst.filter(inRow => inRow.status === st);
 
-      const totInstEx = filteredInst.reduce((s, inRow) => s + inRow.amount, 0);
+      const totInstEx = filteredInst.reduce((s, inRow) => s + (inRow.amount || 0), 0);
       const totInstNet = filteredInst.reduce((s, inRow) => s + (inRow.netTransfer || 0), 0);
 
+      // Group installments by vendor
+      const vendorGroups = [];
+      const vendorMap = new Map();
+
+      filteredInst.forEach(inst => {
+        const vName = inst.vendor || 'ไม่ระบุผู้รับเหมา';
+        if (!vendorMap.has(vName)) {
+          const group = { vendor: vName, installments: [] };
+          vendorMap.set(vName, group);
+          vendorGroups.push(group);
+        }
+        vendorMap.get(vName).installments.push(inst);
+      });
+
       resultsContainer.innerHTML = `
-        <div class="luxury-card" style="padding:0;overflow:hidden">
-          <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:14px 20px">
-            <h2 style="font-size:16px;margin:0">
-              รายละเอียดงวดงานและการวางบิล (Installment Schedule)
-              <span style="font-size:13px;font-weight:400;color:var(--slate-500);margin-left:8px">(พบ ${filteredInst.length} งวดงาน)</span>
+        <!-- Top Overview Header -->
+        <div style="background:#fff;border:1px solid #e2e8f0;padding:14px 20px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+          <div>
+            <h2 style="font-size:16px;margin:0;color:var(--navy-850);display:flex;align-items:center;gap:8px">
+              <span>📋 รายละเอียดงวดงานและการวางบิล แยกรายบริษัท</span>
+              <span style="font-size:12.5px;font-weight:500;color:var(--slate-500);background:#f1f5f9;padding:2px 10px;border-radius:12px">${vendorGroups.length} บริษัท · ${filteredInst.length} งวดงาน</span>
             </h2>
-            <span style="font-size:13px;font-weight:600;color:var(--navy-850)">ยอดรวมงวดงานที่เลือก: ${money(totInstEx)} บาท</span>
+            <div style="font-size:12.5px;color:var(--slate-500);margin-top:4px">
+              จัดกลุ่มแยกรายบริษัทชัดเจน มีระยะคั่นสายตา อ่านง่าย ไม่ปะปนกัน
+            </div>
           </div>
-          <div class="table-responsive">
-            <table class="luxury-table" style="font-size:13px">
-              <thead>
-                <tr>
-                  <th style="width:40px;text-align:center">#</th>
-                  <th style="width:190px">ผู้รับเหมา (Vendor)</th>
-                  <th>รายละเอียดงวดงาน</th>
-                  <th style="width:120px">เลขที่ใบวางบิล</th>
-                  <th style="text-align:right;width:125px">มูลค่า (ex VAT)</th>
-                  <th style="text-align:right;width:125px">มูลค่า (inc VAT)</th>
-                  <th style="text-align:right;width:95px">หัก ณ ที่จ่าย</th>
-                  <th style="text-align:right;width:95px">Retention</th>
-                  <th style="text-align:right;width:125px;color:#16a34a">ยอดโอนสุทธิ</th>
-                  <th style="text-align:center;width:95px">ครบกำหนด</th>
-                  <th style="text-align:center;width:130px">สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${filteredInst.map((inst, idx) => `
-                  <tr>
-                    <td style="text-align:center;color:var(--slate-400)">${inst.contractNo}</td>
-                    <td><strong>${inst.vendor}</strong></td>
-                    <td>
-                      <span>${inst.desc}</span>
-                      ${inst.note ? `<br><small style="color:var(--slate-500)">${inst.note}</small>` : ''}
-                    </td>
-                    <td style="font-family:monospace;color:var(--slate-700)">${inst.invoice || '-'}</td>
-                    <td class="money-cell" style="font-weight:600">${money(inst.amount)}</td>
-                    <td class="money-cell" style="color:var(--slate-600)">${inst.incVat > 0 ? money(inst.incVat) : '-'}</td>
-                    <td class="money-cell" style="color:var(--slate-500)">${inst.wht > 0 ? money(inst.wht) : '-'}</td>
-                    <td class="money-cell" style="color:var(--slate-500)">${inst.retention > 0 ? money(inst.retention) : '-'}</td>
-                    <td class="money-cell" style="font-weight:700;color:#16a34a">${inst.netTransfer > 0 ? money(inst.netTransfer) : '-'}</td>
-                    <td style="text-align:center;color:var(--slate-600)">${inst.dueDate || '-'}</td>
-                    <td style="text-align:center">${badge(inst.status)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-              <tfoot>
-                <tr style="background:#f1f5f9;font-weight:700;border-top:2px solid var(--slate-300)">
-                  <td colspan="4" style="padding:12px;font-size:14px">รวมงวดงานที่แสดง (${filteredInst.length} รายการ)</td>
-                  <td class="money-cell" style="font-size:14px;color:var(--navy-850)">${money(totInstEx)}</td>
-                  <td colspan="3"></td>
-                  <td class="money-cell" style="font-size:14px;color:#16a34a">${money(totInstNet)}</td>
-                  <td colspan="2"></td>
-                </tr>
-              </tfoot>
-            </table>
+          <div style="display:flex;gap:16px;align-items:center;font-size:13px;flex-wrap:wrap">
+            <span>มูลค่างวดรวม: <strong style="color:var(--navy-850);font-size:14.5px">${money(totInstEx)}</strong> บาท</span>
+            <span>ยอดโอนสุทธิรวม: <strong style="color:#16a34a;font-size:14.5px">${money(totInstNet)}</strong> บาท</span>
           </div>
         </div>
+
+        <!-- Vendor Group Cards -->
+        ${vendorGroups.map((group, gIdx) => {
+          const vTotEx = group.installments.reduce((s, i) => s + (i.amount || 0), 0);
+          const vTotNet = group.installments.reduce((s, i) => s + (i.netTransfer || 0), 0);
+          const vPaidCount = group.installments.filter(i => i.status === 'จ่ายเงินแล้ว').length;
+          const vBilledCount = group.installments.filter(i => i.status.includes('วางบิล') && !i.status.includes('ยังไม่วางบิล')).length;
+          const vUnbilledCount = group.installments.filter(i => i.status === 'ยังไม่วางบิล').length;
+
+          return `
+            <div class="luxury-card" style="padding:0;overflow:hidden;margin-bottom:24px;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.04)">
+              <!-- Vendor Group Header Banner -->
+              <div style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="background:var(--gold-500, #f59e0b);color:#0f172a;font-weight:800;font-size:11.5px;padding:3px 9px;border-radius:5px">บริษัทที่ ${gIdx + 1}</span>
+                  <h3 style="margin:0;font-size:15px;font-weight:700;letter-spacing:0.3px;color:#fff">${group.vendor}</h3>
+                  <span style="background:rgba(255,255,255,0.15);font-size:11.5px;padding:2px 8px;border-radius:12px;color:#e2e8f0">${group.installments.length} งวดงาน</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;font-size:12.5px;flex-wrap:wrap">
+                  <span>มูลค่างวดรวม: <strong style="color:#fbbf24;font-size:13.5px">${money(vTotEx)}</strong> บาท</span>
+                  ${vTotNet > 0 ? `<span>ยอดโอนสุทธิ: <strong style="color:#4ade80;font-size:13.5px">${money(vTotNet)}</strong> บาท</span>` : ''}
+                  <span style="font-size:11.5px;color:#94a3b8">(${vPaidCount} จ่ายแล้ว · ${vBilledCount} รอชำระ · ${vUnbilledCount} รอวางบิล)</span>
+                </div>
+              </div>
+
+              <!-- Vendor Installments Table -->
+              <div class="table-responsive">
+                <table class="luxury-table" style="font-size:12.5px;margin:0">
+                  <thead>
+                    <tr style="background:#f8fafc">
+                      <th style="width:45px;text-align:center">งวด</th>
+                      <th>รายละเอียดงวดงาน / ขอบเขตงาน</th>
+                      <th style="width:130px">เลขที่ใบแจ้งหนี้/INV</th>
+                      <th style="text-align:right;width:125px">มูลค่า (ex VAT)</th>
+                      <th style="text-align:right;width:125px">มูลค่า (inc VAT)</th>
+                      <th style="text-align:right;width:100px">หัก ณ ที่จ่าย</th>
+                      <th style="text-align:right;width:125px;color:#16a34a">ยอดโอนสุทธิ</th>
+                      <th style="text-align:center;width:100px">กำหนดชำระ</th>
+                      <th style="text-align:center;width:135px">สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${group.installments.map((inst, iIdx) => `
+                      <tr style="${iIdx % 2 === 1 ? 'background:#fcfdfd' : 'background:#fff'}">
+                        <td style="text-align:center;font-weight:600;color:var(--slate-400)">${iIdx + 1}</td>
+                        <td>
+                          <div style="font-weight:600;color:var(--navy-850)">${inst.desc}</div>
+                          ${inst.note ? `<div style="font-size:11px;color:var(--slate-500);margin-top:2px">${inst.note}</div>` : ''}
+                        </td>
+                        <td style="font-family:monospace;font-size:12px;color:var(--slate-700)">${inst.invoice || '-'}</td>
+                        <td class="money-cell" style="font-weight:600">${money(inst.amount)}</td>
+                        <td class="money-cell" style="color:var(--slate-600)">${inst.incVat > 0 ? money(inst.incVat) : '-'}</td>
+                        <td class="money-cell" style="color:var(--slate-500)">${inst.wht > 0 ? money(inst.wht) : '-'}</td>
+                        <td class="money-cell" style="font-weight:700;color:#16a34a">${inst.netTransfer > 0 ? money(inst.netTransfer) : '-'}</td>
+                        <td style="text-align:center;color:var(--slate-600);font-size:12px">${inst.dueDate || '-'}</td>
+                        <td style="text-align:center">${badge(inst.status)}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background:#f1f5f9;font-weight:700;border-top:1px solid #cbd5e1">
+                      <td colspan="3" style="padding:10px 16px;color:var(--navy-850);font-size:13px">
+                        รวมเฉพาะ <strong>${group.vendor}</strong> (${group.installments.length} งวดงาน)
+                      </td>
+                      <td class="money-cell" style="font-size:13px;color:var(--navy-850)">${money(vTotEx)}</td>
+                      <td colspan="2"></td>
+                      <td class="money-cell" style="font-size:13px;color:#16a34a">${money(vTotNet)}</td>
+                      <td colspan="2"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          `;
+        }).join('')}
       `;
     }
   }
@@ -2902,16 +2946,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (sbDate) sbDate.innerText = `Data Date: ${latest.date}`;
   }
   initNav();
+  updateSyncUI();
   dashboard();
-  
-  // Auto-sync live data from Google Sheet in background
-  syncPaymentFromGoogleSheet().then(synced => {
-    if (synced) {
-      const cur = document.querySelector('.nav-link.active')?.dataset.page || 'Dashboard';
-      if (cur === 'Dashboard') dashboard();
-      else if (cur === 'Payment') payment();
-      else if (cur === 'Contractor Contract') contractorContract();
-      else if (cur === 'Cost Summary') cost();
-    }
-  });
 });
