@@ -3,7 +3,7 @@
 window.GOOGLE_SHEETS_PAYMENT_URL = 'https://docs.google.com/spreadsheets/d/1qKr7ahiBiUv4iDS02g96w1D7N1O8lJf44z1U0vo4gMA/edit';
 const jobs=[
   ['West Coast Engineering Co., Ltd.','Early works',1172417.4,1172417.4,0,0.0,'Close / เรียกเก็บตามจริง ส่วนที่เหลือยกเลิก'],
-  ['West Coast Engineering Co., Ltd.','EPCM',7000000.0,5950000.0,700000.0,350000.0,'Open'],
+  ['West Coast Engineering Co., Ltd.','EPCM',7000000.0,5950000.0,0.0,1050000.0,'Open'],
   ['บริษัท เรือนแก้ว ภูเก็ต จำกัด','เสาเข็ม',5072000.0,5072000.0,0,0.0,'Close'],
   ['บริษัท ต.วรคุณ จำกัด','เหล็กเส้น',4696684.5,4696684.5,0,0.0,'Close'],
   ['บริษัท เรือนแก้ว ภูเก็ต จำกัด','งาน Sub-Structure (งานฐานรากส่วนเสาเข็ม, ฟุตติ้ง, ตอม่อ, คานพื้น)',10617064.57,10617064.57,0,0.0,'Close / เรียกเก็บตามจริง ส่วนที่เหลือยกเลิก'],
