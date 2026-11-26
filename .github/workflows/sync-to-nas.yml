@@ -1,0 +1,86 @@
+# วางไฟล์นี้ไว้ที่ .github/workflows/sync-to-nas.yml ใน repo epcm-phuket
+# ทำงานอัตโนมัติทุกครั้งที่มีการ push เข้า main  -> อัปโหลดไฟล์ที่เปลี่ยนเข้า NAS (Web/epcm)
+# กดรันเองได้ที่แท็บ Actions > Sync to QNAP NAS > Run workflow (เลือก full=true เพื่ออัปโหลดทั้งหมด)
+#
+# ต้องตั้ง Secrets ใน repo (Settings > Secrets and variables > Actions):
+#   NAS_URL   = https://agscc.myqnapcloud.com
+#   NAS_USER  = websync
+#   NAS_PASS  = (รหัสของบัญชี websync)
+
+name: Sync to QNAP NAS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "อัปโหลดทุกไฟล์ (true) หรือเฉพาะไฟล์ที่เปลี่ยน (false)"
+        default: "true"
+
+concurrency:
+  group: nas-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Upload to NAS
+        env:
+          NAS_URL: ${{ secrets.NAS_URL }}
+          NAS_USER: ${{ secrets.NAS_USER }}
+          NAS_PASS: ${{ secrets.NAS_PASS }}
+          FULL: ${{ github.event_name == 'workflow_dispatch' && inputs.full || 'false' }}
+        run: |
+          set -euo pipefail
+          DEST=/Web/epcm
+          API="$NAS_URL/cgi-bin/filemanager/utilRequest.cgi"
+
+          # ไฟล์ที่ห้ามขึ้นเว็บ (ข้อมูลดิบ / ไฟล์ภายใน)
+          is_excluded() {
+            case "$1" in
+              *.csv|*.md|*.url|*.txt|index.original.html) return 0;;
+              .github/*|docs/*|google-sheet-payment-sync/*) return 0;;
+              assets/S-Curve_International_School_Phuket_latest.xlsx|assets/manpower-report-*) return 0;;
+            esac
+            return 1
+          }
+
+          # 1) Login (QTS ต้องการรหัสแบบ base64)
+          PW64=$(printf '%s' "$NAS_PASS" | base64 -w0)
+          RESP=$(curl -fsS --data-urlencode "user=$NAS_USER" --data-urlencode "pwd=$PW64" \
+                 -d "serviceKey=1" "$NAS_URL/cgi-bin/authLogin.cgi")
+          SID=$(echo "$RESP" | sed -n 's:.*<authSid><!\[CDATA\[\(.*\)\]\]></authSid>.*:\1:p')
+          if [ -z "$SID" ]; then echo "::error::Login NAS ไม่สำเร็จ - เช็ค NAS_USER/NAS_PASS"; exit 1; fi
+          echo "::add-mask::$SID"
+
+          # 2) เลือกไฟล์ที่จะอัปโหลด
+          if [ "$FULL" = "true" ] || ! git rev-parse -q --verify HEAD~1 >/dev/null; then
+            FILES=$(ls index.html; find assets -type f | sort)
+          else
+            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- index.html assets/ || true)
+          fi
+
+          # 3) อัปโหลดทีละไฟล์
+          ok=0; fail=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            is_excluded "$f" && { echo "skip  $f"; continue; }
+            dir=$(dirname "$f"); [ "$dir" = "." ] && sub="" || sub="/$dir"
+            name=$(basename "$f")
+            out=$(curl -sS -F "file=@$f;filename=$name" \
+              "$API?func=upload&type=standard&sid=$SID&overwrite=1&dest_path=$(printf '%s' "$DEST$sub" | jq -sRr @uri)&progress=$(printf '%s' "$f" | tr '/' '-' | jq -sRr @uri)")
+            if echo "$out" | grep -q '"status": *1'; then echo "ok    $f"; ok=$((ok+1));
+            else echo "FAIL  $f -> $out"; fail=$((fail+1)); fi
+          done <<< "$FILES"
+
+          # 4) Logout
+          curl -fsS "$NAS_URL/cgi-bin/authLogout.cgi?sid=$SID" >/dev/null || true
+          echo "อัปโหลดสำเร็จ $ok ไฟล์, ล้มเหลว $fail ไฟล์"
+          [ "$fail" -eq 0 ]
