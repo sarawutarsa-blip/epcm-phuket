@@ -570,30 +570,31 @@ body {
   }
 }
 .cost-table th {
-  background: #f1f5f9;
-  color: var(--slate-700);
-  font-size: 11px;
+  background: #f8fafc;
+  color: var(--slate-600);
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 10px 14px;
-  border-bottom: 2px solid var(--slate-300);
+  letter-spacing: 0.02em;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--slate-200);
+  white-space: nowrap;
 }
 .cost-table td {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--slate-200);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--slate-100);
   font-size: 13px;
   color: var(--slate-800);
   vertical-align: middle;
 }
 .cost-table tbody tr:hover {
-  background-color: #f8fafc;
+  background-color: #f1f5f9;
 }
 .cost-table tbody tr.closed {
-  background-color: #fafdfb;
+  background-color: #ffffff;
 }
 .cost-table tfoot td {
-  padding: 11px 14px;
+  padding: 9px 12px;
+  background: #f8fafc;
   border-top: 2px solid var(--slate-300);
   border-bottom: none;
 }
