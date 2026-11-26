@@ -41,6 +41,15 @@ function parseNum(s) {
 function updateSyncUI() {
   const pill = document.getElementById('gsheetLivePill');
   const pillText = document.getElementById('gsheetLivePillText');
+  const topBudgetEl = document.getElementById('topBudgetPill');
+
+  if (topBudgetEl && window.paymentContracts && window.paymentContracts.length > 0) {
+    const totVal = window.paymentContracts.reduce((s, c) => s + (c.value || 0), 0);
+    if (totVal > 0) {
+      topBudgetEl.innerHTML = `งบโครงการ: <b>฿${(totVal / 1e6).toFixed(2)}M</b>`;
+    }
+  }
+
   if (!pill || !pillText) return;
 
   if (window.gsheetSyncStatus && window.gsheetSyncStatus.synced) {
@@ -113,6 +122,8 @@ async function syncPaymentFromGoogleSheet(isManual = false) {
         let stdStatus = 'ยังไม่วางบิล';
         if ((st.includes('ชำระแล้ว') || st.includes('จ่ายเงินแล้ว') || st === 'จ่ายแล้ว') && !st.includes('ยังไม่') && !st.includes('รอ')) {
           stdStatus = 'จ่ายเงินแล้ว';
+        } else if (st.includes('รอวางบิล') || st.includes('ยังไม่วางบิล') || st.includes('ยังไม่เบิก') || st.includes('ยังไม่ได้เบิก')) {
+          stdStatus = 'ยังไม่วางบิล';
         } else if (st.includes('วางบิล') || st.includes('รอชำระ') || st.includes('ยังไม่จ่าย')) {
           stdStatus = 'วางบิลแล้ว (ยังไม่จ่ายเงิน)';
         }
