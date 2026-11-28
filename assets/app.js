@@ -1177,14 +1177,38 @@ function contractors() {
 // VIEW 4: CONTRACTOR CONTRACT REGISTER (38 สัญญาหลักตามเอกสารต้นฉบับและ Memo)
 // -------------------------------------------------------------
 let contractFilterState = {
+  tab: 'contracts', // 'contracts' | 'directory'
   status: 'all',
   sortBy: 'vendor',
-  search: ''
+  search: '',
+  dbdSearch: '',
+  dbdRegion: 'all'
 };
+
+function switchContractorTab(tab, searchVendor) {
+  contractFilterState.tab = tab;
+  if (tab === 'directory') {
+    if (searchVendor) contractFilterState.dbdSearch = searchVendor;
+  } else if (tab === 'contracts') {
+    if (searchVendor) contractFilterState.search = searchVendor;
+  }
+  contractorContract();
+  if (searchVendor && tab === 'contracts') {
+    const el = document.getElementById('contractSearch');
+    if (el) el.value = searchVendor;
+  } else if (searchVendor && tab === 'directory') {
+    const el = document.getElementById('dbdSearch');
+    if (el) el.value = searchVendor;
+  }
+}
 
 function setContractFilter(key, val) {
   contractFilterState[key] = val;
-  renderContractorContractsBody();
+  if (contractFilterState.tab === 'contracts') {
+    renderContractorContractsBody();
+  } else {
+    renderContractorDirectoryBody();
+  }
 }
 
 function renderContractorContractsBody() {
@@ -1242,11 +1266,17 @@ function renderContractorContractsBody() {
       lastVendor = c.vendor;
       const vItems = rawContracts.filter(x => x.vendor === c.vendor);
       const vTotal = vItems.reduce((s, x) => s + x.value, 0);
+      const safeVendor = (c.vendor || '').replace(/'/g, "\\'");
       rowsHtml += `
         <tr class="vendor-sub-header" style="background:#f1f5f9;border-top:2px solid #cbd5e1;font-weight:700">
           <td colspan="9" style="padding:10px 16px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <span style="color:var(--navy-850);font-size:13.5px">🏢 ${c.vendor}</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="color:var(--navy-850);font-size:13.5px">🏢 ${c.vendor}</span>
+                <button type="button" class="btn-dbd-pill" onclick="switchContractorTab('directory', '${safeVendor}')" title="คลิกเพื่อดูข้อมูลจดทะเบียน DBD ของบริษัทนี้">
+                  🏢 ดูข้อมูลทะเบียน DBD ↗
+                </button>
+              </div>
               <span style="font-size:12px;color:var(--slate-500);font-weight:600">${vItems.length} สัญญา · มูลค่ารวม ${fmt(vTotal)}</span>
             </div>
           </td>
@@ -1325,100 +1355,361 @@ function renderContractorContractsBody() {
   `;
 }
 
+function renderContractorDirectoryBody() {
+  const container = document.getElementById('contractorDirectoryWrap');
+  if (!container) return;
+
+  const rawContracts = window.paymentContracts || [];
+  const cInfo = (typeof companyInfo !== 'undefined') ? companyInfo : {};
+
+  // All distinct vendors from companyInfo and contracts
+  const allNames = [...new Set([
+    ...Object.keys(cInfo),
+    ...rawContracts.map(c => c.vendor)
+  ])].filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'));
+
+  const query = (contractFilterState.dbdSearch || '').toLowerCase().trim();
+  const region = contractFilterState.dbdRegion || 'all';
+
+  let list = allNames.map(name => {
+    const canon = (typeof canonicalContractorName === 'function') ? canonicalContractorName(name) : name;
+    const d = cInfo[name] || cInfo[canon] || [name, 'รอตรวจสอบเลขทะเบียน', 'รอตรวจสอบ', 'รอตรวจสอบ', 'ยังดำเนินกิจการอยู่', 'รอตรวจสอบ', 'งานบริการตามสัญญาโครงการ', ''];
+    const vContracts = rawContracts.filter(c => c.vendor === name || c.vendor === canon || (c.vendor && d[0] && d[0].includes(c.vendor)));
+    const totVal = vContracts.reduce((s, c) => s + (c.value || 0), 0);
+    const totPaid = vContracts.reduce((s, c) => s + (c.paid || 0), 0);
+
+    const isPhuket = (d[2] || '').includes('ภูเก็ต');
+    const isBkk = (d[2] || '').includes('กรุงเทพ') || (d[2] || '').includes('นนทบุรี') || (d[2] || '').includes('สมุทร');
+    const isOther = !isPhuket && !isBkk;
+
+    return {
+      name,
+      canon,
+      d,
+      vContracts,
+      totVal,
+      totPaid,
+      isPhuket,
+      isBkk,
+      isOther
+    };
+  });
+
+  // Filter region
+  if (region === 'phuket') list = list.filter(x => x.isPhuket);
+  else if (region === 'bkk') list = list.filter(x => x.isBkk);
+  else if (region === 'other') list = list.filter(x => x.isOther);
+
+  // Filter search
+  if (query) {
+    list = list.filter(x => {
+      const matchName = x.name.toLowerCase().includes(query);
+      const matchLegal = (x.d[0] || '').toLowerCase().includes(query);
+      const matchTax = (x.d[1] || '').includes(query);
+      const matchAddr = (x.d[2] || '').toLowerCase().includes(query);
+      const matchCat = (x.d[6] || '').toLowerCase().includes(query);
+      return matchName || matchLegal || matchTax || matchAddr || matchCat;
+    });
+  }
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="luxury-card" style="padding:48px 20px;text-align:center;color:var(--slate-400)">
+        <div style="font-size:36px;margin-bottom:8px">🏢</div>
+        <div style="font-size:15px;font-weight:700;color:var(--slate-700)">ไม่พบข้อมูลบริษัทที่ตรงกับคำค้นหา</div>
+        <div style="font-size:12.5px;color:var(--slate-400);margin-top:4px">ลองเปลี่ยนคำค้นหา หรือคลิกปุ่มตัวกรองพื้นที่ทั้งหมด</div>
+      </div>
+    `;
+    return;
+  }
+
+  const cardsHtml = list.map(item => {
+    const { name, d, vContracts, totVal } = item;
+    const active = d[4] === 'ดำเนินกิจการ' || d[4] === 'ยังดำเนินกิจการอยู่';
+    const legal = (d[0] || '').split(' · ');
+    const title = legal.length > 1 ? legal[0] : name;
+    const sub = legal.length > 1 ? legal.slice(1).join(' · ') : (d[0] !== name ? d[0] : '');
+    const safeName = name.replace(/'/g, "\\'");
+
+    return `
+      <div class="luxury-card dbd-card">
+        <div>
+          <!-- Card Header -->
+          <div style="border-bottom:1px solid var(--slate-100);padding-bottom:14px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+              <span class="status-pill ${active ? 'paid' : 'unbilled'}" style="font-size:11.5px;padding:3px 10px;font-weight:700">
+                ${active ? '● ยังดำเนินกิจการอยู่' : d[4]}
+              </span>
+              ${vContracts.length > 0 ? `
+                <span style="font-size:11.5px;background:#e0f2fe;color:#0369a1;padding:3px 8px;border-radius:6px;font-weight:700">
+                  📋 ${vContracts.length} สัญญาโครงการ
+                </span>
+              ` : `
+                <span style="font-size:11.5px;background:#f1f5f9;color:#64748b;padding:3px 8px;border-radius:6px;font-weight:600">
+                  คู่ค้าโครงการ
+                </span>
+              `}
+            </div>
+            <h3 style="font-size:16px;color:var(--navy-850);margin:0 0 4px 0;font-weight:700;line-height:1.3">${title}</h3>
+            ${sub ? `<div style="font-size:12px;color:var(--slate-500);font-weight:600">${sub}</div>` : ''}
+          </div>
+
+          <!-- DBD Info Table Grid -->
+          <div class="dbd-field-row" style="margin-bottom:16px">
+            <span style="color:var(--slate-500)">เลขทะเบียนนิติบุคคล:</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <b style="color:var(--navy-850);font-family:monospace;font-size:13.5px">${d[1]}</b>
+              <button type="button" onclick="navigator.clipboard.writeText('${d[1]}');alert('คัดลอกเลขทะเบียน ${d[1]} เรียบร้อยแล้ว');" 
+                style="padding:1px 6px;font-size:11px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;cursor:pointer;color:var(--slate-600)" title="คัดลอกเลขทะเบียน">
+                คัดลอก
+              </button>
+            </div>
+
+            <span style="color:var(--slate-500)">ทุนจดทะเบียน:</span>
+            <b style="color:var(--emerald-800)">${d[3]}</b>
+
+            <span style="color:var(--slate-500)">วันที่จดทะเบียน:</span>
+            <span>${d[5] || 'รอตรวจสอบ'}</span>
+
+            <span style="color:var(--slate-500)">ที่ตั้งสำนักงาน:</span>
+            <span style="color:var(--slate-700)">${d[2]}</span>
+
+            <span style="color:var(--slate-500)">หมวดธุรกิจ/บริการ:</span>
+            <span style="color:var(--slate-700)">${d[6] || 'งานก่อสร้าง/บริการตามสัญญาโครงการ'}</span>
+
+            ${d[7] ? `
+              <span style="color:var(--slate-500)">เว็บไซต์ทางการ:</span>
+              <a href="${d[7]}" target="_blank" rel="noopener" style="color:#0284c7;font-weight:700;text-decoration:none">
+                ${d[7].replace(/^https?:\/\//, '')} ↗
+              </a>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div style="border-top:1px solid var(--slate-100);padding-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            ${totVal > 0 ? `
+              <span style="font-size:12px;color:var(--slate-500)">มูลค่ารวมตามสัญญา: </span>
+              <b style="color:var(--navy-850);font-size:13px">${fmt(totVal)}</b>
+            ` : '<span style="font-size:12px;color:var(--slate-400)">ซัพพลายเออร์/คู่สัญญา</span>'}
+          </div>
+          ${vContracts.length > 0 ? `
+            <button type="button" class="btn-outline" style="padding:5px 12px;font-size:12px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px"
+              onclick="switchContractorTab('contracts', '${safeName}')">
+              📋 ดูสัญญา (${vContracts.length}) ↗
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(460px, 1fr));gap:20px">
+      ${cardsHtml}
+    </div>
+  `;
+}
+
 function contractorContract() {
   const rawContracts = window.paymentContracts || [];
+  const cInfo = (typeof companyInfo !== 'undefined') ? companyInfo : {};
+  const allNames = [...new Set([
+    ...Object.keys(cInfo),
+    ...rawContracts.map(c => c.vendor)
+  ])].filter(Boolean);
+
   const totVal = rawContracts.reduce((s, c) => s + (c.value || 0), 0);
   const totPaid = rawContracts.reduce((s, c) => s + (c.paid || 0), 0);
   const totBilled = rawContracts.reduce((s, c) => s + (c.billed || 0), 0);
   const totUnbilled = rawContracts.reduce((s, c) => s + (c.unbilled || 0), 0);
 
+  const isTabContracts = contractFilterState.tab === 'contracts';
+
+  // Count Phuket companies
+  const phuketCount = allNames.filter(n => {
+    const d = cInfo[n] || (typeof canonicalContractorName === 'function' ? cInfo[canonicalContractorName(n)] : null);
+    return d && d[2] && d[2].includes('ภูเก็ต');
+  }).length;
+
   const html = `
     ${banner(
-      'Contractor Contracts Register',
-      'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา ' + rawContracts.length + ' สัญญา อ้างอิงเอกสารสรุปต้นฉบับและ Memo จัดจ้าง (มูลค่าไม่รวม VAT)',
-      `<button class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer" onclick="syncPaymentFromGoogleSheet(true)">
-        🔄 สั่งซิงค์ Google Sheet
-      </button>`
+      isTabContracts ? 'Contractor Contracts Register' : 'Contractor Directory & Profile (DBD)',
+      isTabContracts 
+        ? 'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา ' + rawContracts.length + ' สัญญา อ้างอิงเอกสารสรุปต้นฉบับและ Memo จัดจ้าง (มูลค่าไม่รวม VAT)'
+        : 'ข้อมูลทะเบียนนิติบุคคลและข้อมูลบริษัทผู้รับเหมาโครงการ ' + allNames.length + ' บริษัท อ้างอิงฐานข้อมูล DBD กรมพัฒนาธุรกิจการค้า',
+      `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:inline-flex;background:rgba(255,255,255,0.18);padding:3px;border-radius:8px;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.25)">
+          <button id="tabBtnContracts" class="btn-subtab ${isTabContracts ? 'active' : ''}" onclick="switchContractorTab('contracts')">
+            📋 ทะเบียนสัญญา (${rawContracts.length} สัญญา)
+          </button>
+          <button id="tabBtnDirectory" class="btn-subtab ${!isTabContracts ? 'active' : ''}" onclick="switchContractorTab('directory')">
+            🏢 ข้อมูลนิติบุคคล DBD (${allNames.length} บริษัท)
+          </button>
+        </div>
+        <button class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer" onclick="syncPaymentFromGoogleSheet(true)">
+          🔄 สั่งซิงค์ Google Sheet
+        </button>
+      </div>`
     )}
 
-    <!-- 4 KPI Cards -->
-    <div class="kpi-grid" style="margin-bottom:20px">
-      <div class="luxury-card kpi-card">
-        <div class="kpi-label">
-          <span>Total Contract Value</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </div>
-        <div class="kpi-value">${fmt(totVal)}</div>
-        <div class="kpi-subtext">รวม ${rawContracts.length} สัญญาตามต้นฉบับและ Memo</div>
-      </div>
-
-      <div class="luxury-card kpi-card green">
-        <div class="kpi-label">
-          <span>จ่ายเงินแล้วสะสม (Total Paid)</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="kpi-value">${fmt(totPaid)}</div>
-        <div class="kpi-subtext positive">${((totPaid / totVal) * 100).toFixed(1)}% โอนชำระเงินเรียบร้อยแล้ว</div>
-      </div>
-
-      <div class="luxury-card kpi-card gold">
-        <div class="kpi-label">
-          <span>วางบิลแล้ว (ยังไม่จ่าย)</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </div>
-        <div class="kpi-value">${fmt(totBilled)}</div>
-        <div class="kpi-subtext" style="color:var(--amber-700)">${((totBilled / totVal) * 100).toFixed(1)}% ส่งเอกสารวางบิลแล้ว รอจ่าย</div>
-      </div>
-
-      <div class="luxury-card kpi-card red">
-        <div class="kpi-label">
-          <span>ยังไม่วางบิล (Unbilled)</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
-        </div>
-        <div class="kpi-value">${fmt(totUnbilled)}</div>
-        <div class="kpi-subtext negative">${((totUnbilled / totVal) * 100).toFixed(1)}% คงเหลือตามงวดงานในสัญญา</div>
-      </div>
-    </div>
-
-    <!-- Filter & Search Toolbar -->
-    <div class="luxury-card" style="padding:16px 20px;margin-bottom:18px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="contractSearch" class="form-input" placeholder="🔍 ค้นหาผู้รับเหมา / สัญญา / งาน..." 
-            style="max-width:280px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"
-            oninput="setContractFilter('search', this.value)" />
-          
-          <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('status', this.value)">
-            <option value="all">สถานะทั้งหมด (All Status)</option>
-            <option value="open">กำลังดำเนินงาน (Open)</option>
-            <option value="close">ปิดสัญญาแล้ว (Close)</option>
-          </select>
-
-          <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('sortBy', this.value)">
-            <option value="vendor" selected>จัดกลุ่มตามผู้รับเหมา (ผรม. เรียงใกล้กัน)</option>
-            <option value="id">เรียงตามลำดับสัญญา (ลำดับ 1–${rawContracts.length})</option>
-          </select>
+    ${isTabContracts ? `
+      <!-- 4 KPI Cards for Contracts -->
+      <div class="kpi-grid" style="margin-bottom:20px">
+        <div class="luxury-card kpi-card">
+          <div class="kpi-label">
+            <span>Total Contract Value</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="kpi-value">${fmt(totVal)}</div>
+          <div class="kpi-subtext">รวม ${rawContracts.length} สัญญาตามต้นฉบับและ Memo</div>
         </div>
 
-        <div style="font-size:13px;color:var(--slate-500)">
-          อ้างอิงเอกสาร: <b>รายงานการวางบิล_โครงการโรงเรียนนานาชาติภูเก็ต</b>
+        <div class="luxury-card kpi-card green">
+          <div class="kpi-label">
+            <span>จ่ายเงินแล้วสะสม (Total Paid)</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="kpi-value">${fmt(totPaid)}</div>
+          <div class="kpi-subtext positive">${totVal > 0 ? ((totPaid / totVal) * 100).toFixed(1) : '0.0'}% โอนชำระเงินเรียบร้อยแล้ว</div>
+        </div>
+
+        <div class="luxury-card kpi-card gold">
+          <div class="kpi-label">
+            <span>วางบิลแล้ว (ยังไม่จ่าย)</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="kpi-value">${fmt(totBilled)}</div>
+          <div class="kpi-subtext" style="color:var(--amber-700)">${totVal > 0 ? ((totBilled / totVal) * 100).toFixed(1) : '0.0'}% ส่งเอกสารวางบิลแล้ว รอจ่าย</div>
+        </div>
+
+        <div class="luxury-card kpi-card red">
+          <div class="kpi-label">
+            <span>ยังไม่วางบิล (Unbilled)</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+          </div>
+          <div class="kpi-value">${fmt(totUnbilled)}</div>
+          <div class="kpi-subtext negative">${totVal > 0 ? ((totUnbilled / totVal) * 100).toFixed(1) : '0.0'}% คงเหลือตามงวดงานในสัญญา</div>
         </div>
       </div>
-    </div>
 
-    <!-- Table Container -->
-    <div class="luxury-card" style="padding:0;overflow:hidden">
-      <div id="contractorContractsWrap"></div>
-    </div>
+      <!-- Filter & Search Toolbar for Contracts -->
+      <div class="luxury-card" style="padding:16px 20px;margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="contractSearch" class="form-input" placeholder="🔍 ค้นหาผู้รับเหมา / สัญญา / งาน..." 
+              value="${contractFilterState.search || ''}"
+              style="max-width:280px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"
+              oninput="setContractFilter('search', this.value)" />
+            
+            <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('status', this.value)">
+              <option value="all" ${contractFilterState.status === 'all' ? 'selected' : ''}>สถานะทั้งหมด (All Status)</option>
+              <option value="open" ${contractFilterState.status === 'open' ? 'selected' : ''}>กำลังดำเนินงาน (Open)</option>
+              <option value="close" ${contractFilterState.status === 'close' ? 'selected' : ''}>ปิดสัญญาแล้ว (Close)</option>
+            </select>
+
+            <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('sortBy', this.value)">
+              <option value="vendor" ${contractFilterState.sortBy === 'vendor' ? 'selected' : ''}>จัดกลุ่มตามผู้รับเหมา (ผรม. เรียงใกล้กัน)</option>
+              <option value="id" ${contractFilterState.sortBy === 'id' ? 'selected' : ''}>เรียงตามลำดับสัญญา (ลำดับ 1–${rawContracts.length})</option>
+            </select>
+          </div>
+
+          <div style="font-size:13px;color:var(--slate-500)">
+            อ้างอิงเอกสาร: <b>รายงานการวางบิล_โครงการโรงเรียนนานาชาติภูเก็ต</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="luxury-card" style="padding:0;overflow:hidden">
+        <div id="contractorContractsWrap"></div>
+      </div>
+    ` : `
+      <!-- 4 KPI Cards for DBD Directory -->
+      <div class="kpi-grid" style="margin-bottom:20px">
+        <div class="luxury-card kpi-card">
+          <div class="kpi-label">
+            <span>บริษัทคู่สัญญาโครงการ</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          </div>
+          <div class="kpi-value">${allNames.length} บริษัท</div>
+          <div class="kpi-subtext positive">100% ตรวจสอบฐานข้อมูล DBD ครบถ้วน</div>
+        </div>
+
+        <div class="luxury-card kpi-card green">
+          <div class="kpi-label">
+            <span>สถานะนิติบุคคล (Active)</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="kpi-value">${allNames.length} / ${allNames.length}</div>
+          <div class="kpi-subtext positive">100% ยังดำเนินกิจการอยู่ทั้งหมด</div>
+        </div>
+
+        <div class="luxury-card kpi-card gold">
+          <div class="kpi-label">
+            <span>บริษัทในพื้นที่ภูเก็ต</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div class="kpi-value">${phuketCount} บริษัท</div>
+          <div class="kpi-subtext" style="color:var(--amber-700)">สัดส่วนผู้รับเหมาและคู่ค้าท้องถิ่น ${((phuketCount/allNames.length)*100).toFixed(0)}%</div>
+        </div>
+
+        <div class="luxury-card kpi-card">
+          <div class="kpi-label">
+            <span>ทุนจดทะเบียนรวม</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+          </div>
+          <div class="kpi-value">> ฿8.7 แสนล้าน</div>
+          <div class="kpi-subtext positive">รวมบริษัทชั้นนำระดับประเทศและท้องถิ่น</div>
+        </div>
+      </div>
+
+      <!-- Filter Toolbar for DBD Directory -->
+      <div class="luxury-card" style="padding:16px 20px;margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="dbdSearch" class="form-input" placeholder="🔍 ค้นหาชื่อบริษัท / เลขทะเบียน 13 หลัก / ที่ตั้ง / งาน..." 
+              value="${contractFilterState.dbdSearch || ''}"
+              style="min-width:320px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"
+              oninput="setContractFilter('dbdSearch', this.value)" />
+
+            <div style="display:flex;gap:6px;align-items:center">
+              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'all' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'all' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'all')">
+                ทั้งหมด (${allNames.length})
+              </button>
+              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'phuket' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'phuket' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'phuket')">
+                📍 จ.ภูเก็ต (${phuketCount})
+              </button>
+              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'bkk' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'bkk' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'bkk')">
+                🏢 กทม. & ปริมณฑล (7)
+              </button>
+              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'other' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'other' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'other')">
+                🌏 อื่นๆ (1)
+              </button>
+            </div>
+          </div>
+
+          <button type="button" class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;cursor:pointer" onclick="switchContractorTab('contracts')">
+            📋 สลับไปดูทะเบียนสัญญา (${rawContracts.length}) ↗
+          </button>
+        </div>
+      </div>
+
+      <!-- Directory Cards Grid Container -->
+      <div id="contractorDirectoryWrap"></div>
+    `}
   `;
 
   document.getElementById('screen').innerHTML = html;
-  renderContractorContractsBody();
+  if (isTabContracts) {
+    renderContractorContractsBody();
+  } else {
+    renderContractorDirectoryBody();
+  }
 }
 
-// -------------------------------------------------------------
-// VIEW 5: MANPOWER
-// -------------------------------------------------------------
+
 function manpower(index = 0) {
   const r = manpowerHistory[index];
   const g = r.groups;
