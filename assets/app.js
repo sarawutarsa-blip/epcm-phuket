@@ -1177,227 +1177,16 @@ function contractors() {
 // VIEW 4: CONTRACTOR CONTRACT REGISTER (38 สัญญาหลักตามเอกสารต้นฉบับและ Memo)
 // -------------------------------------------------------------
 let contractFilterState = {
-  tab: 'contracts', // 'contracts' | 'directory'
-  status: 'all',
-  sortBy: 'vendor',
   search: '',
-  dbdSearch: '',
-  dbdRegion: 'all'
+  region: 'all'
 };
-
-function switchContractorTab(tab, searchVendor) {
-  contractFilterState.tab = tab;
-  if (tab === 'directory') {
-    if (searchVendor) contractFilterState.dbdSearch = searchVendor;
-  } else if (tab === 'contracts') {
-    if (searchVendor) contractFilterState.search = searchVendor;
-  }
-  contractorContract();
-  if (searchVendor && tab === 'contracts') {
-    const el = document.getElementById('contractSearch');
-    if (el) el.value = searchVendor;
-  } else if (searchVendor && tab === 'directory') {
-    const el = document.getElementById('dbdSearch');
-    if (el) el.value = searchVendor;
-  }
-}
 
 function setContractFilter(key, val) {
   contractFilterState[key] = val;
-  if (contractFilterState.tab === 'contracts') {
-    renderContractorContractsBody();
-  } else {
-    renderContractorDirectoryBody();
-  }
+  renderContractorDirectory();
 }
 
-function renderContractorContractsBody() {
-  const container = document.getElementById('contractorContractsWrap');
-  if (!container) return;
-
-  const rawContracts = window.paymentContracts || [];
-  const query = (contractFilterState.search || '').toLowerCase().trim();
-
-  // Filter
-  let list = rawContracts.filter(c => {
-    const isClosed = c.note && c.note.toLowerCase().includes('close');
-    if (contractFilterState.status === 'open' && isClosed) return false;
-    if (contractFilterState.status === 'close' && !isClosed) return false;
-
-    if (query) {
-      const matchVendor = (c.vendor || '').toLowerCase().includes(query);
-      const matchWork = (c.work || '').toLowerCase().includes(query);
-      const matchNo = String(c.no || '').includes(query);
-      const matchPo = (c.po || '').toLowerCase().includes(query);
-      const matchContractNo = (c.contractNo || '').toLowerCase().includes(query);
-      if (!matchVendor && !matchWork && !matchNo && !matchPo && !matchContractNo) return false;
-    }
-    return true;
-  });
-
-  // Sort
-  if (contractFilterState.sortBy === 'vendor') {
-    list.sort((a, b) => {
-      const vA = a.vendor || '';
-      const vB = b.vendor || '';
-      if (vA !== vB) return vA.localeCompare(vB, 'th');
-      return (a.no || 0) - (b.no || 0);
-    });
-  } else {
-    list.sort((a, b) => (a.no || 0) - (b.no || 0));
-  }
-
-  // Totals for filtered
-  const subTotal = list.reduce((s, c) => s + (c.value || 0), 0);
-  const subPaid = list.reduce((s, c) => s + (c.paid || 0), 0);
-  const subBilled = list.reduce((s, c) => s + (c.billed || 0), 0);
-  const subUnbilled = list.reduce((s, c) => s + (c.unbilled || 0), 0);
-  const subPct = subTotal > 0 ? ((subPaid / subTotal) * 100).toFixed(1) : '0.0';
-
-  // Render rows
-  let rowsHtml = '';
-  let lastVendor = null;
-
-  list.forEach(c => {
-    const isClosed = c.note && c.note.toLowerCase().includes('close');
-    const pct = c.value > 0 ? Math.min(100, (c.paid / c.value) * 100) : 0;
-    const isNewVendor = contractFilterState.sortBy === 'vendor' && c.vendor !== lastVendor;
-    if (isNewVendor) {
-      lastVendor = c.vendor;
-      const vItems = rawContracts.filter(x => x.vendor === c.vendor);
-      const vTotal = vItems.reduce((s, x) => s + x.value, 0);
-      const safeVendor = (c.vendor || '').replace(/'/g, "\\'");
-      const cInfo = (typeof companyInfo !== 'undefined') ? companyInfo : {};
-      const canon = (typeof canonicalContractorName === 'function') ? canonicalContractorName(c.vendor) : c.vendor;
-      const d = cInfo[c.vendor] || cInfo[canon] || null;
-      let legalSub = '';
-      if (d && d[0]) {
-        const parts = d[0].split(' · ');
-        legalSub = parts.length > 1 ? parts[1] : (d[0] !== c.vendor ? d[0] : '');
-      }
-
-      rowsHtml += `
-        <tr class="vendor-sub-header" style="background:#f8fafc;border-top:3px solid #cbd5e1;border-bottom:1px solid #cbd5e1">
-          <td colspan="9" style="padding:14px 18px">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-              <div>
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                  <span style="font-size:15px;font-weight:700;color:var(--navy-850)">🏢 ${c.vendor}</span>
-                  ${legalSub ? `<span style="font-size:12px;color:var(--slate-500);font-weight:600">(${legalSub})</span>` : ''}
-                  <span class="status-pill paid" style="font-size:11px;padding:2px 8px;font-weight:700">● ยังดำเนินกิจการอยู่</span>
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;color:var(--slate-700);font-weight:700;background:#e2e8f0;padding:4px 10px;border-radius:6px">
-                  ${vItems.length} สัญญา · มูลค่ารวม ${fmt(vTotal)}
-                </span>
-                <button type="button" class="btn-dbd-pill" onclick="switchContractorTab('directory', '${safeVendor}')" title="เปิดดูการ์ด DBD เต็มรูปแบบ">
-                  ข้อมูล DBD เต็ม ↗
-                </button>
-              </div>
-            </div>
-
-            ${d ? `
-              <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:6px 16px;font-size:12px;color:var(--slate-600);margin-top:6px">
-                <div>
-                  <span style="color:var(--slate-400)">เลขทะเบียนนิติบุคคล:</span>
-                  <b style="color:var(--navy-850);font-family:monospace;font-size:12.5px;margin-left:4px">${d[1]}</b>
-                </div>
-                <div>
-                  <span style="color:var(--slate-400)">ทุนจดทะเบียน:</span>
-                  <b style="color:var(--emerald-700);margin-left:4px">${d[3]}</b>
-                </div>
-                <div>
-                  <span style="color:var(--slate-400)">วันที่จดทะเบียน:</span>
-                  <span style="color:var(--slate-700);margin-left:4px">${d[5] || '-'}</span>
-                </div>
-                <div style="grid-column:1 / -1;display:flex;align-items:flex-start;gap:6px">
-                  <span style="color:var(--slate-400);white-space:nowrap">ที่ตั้งสำนักงาน:</span>
-                  <span style="color:var(--slate-700)">${d[2]}</span>
-                </div>
-                <div style="grid-column:1 / -1;display:flex;align-items:flex-start;gap:6px">
-                  <span style="color:var(--slate-400);white-space:nowrap">หมวดธุรกิจ:</span>
-                  <span style="color:var(--slate-600)">${d[6] || '-'}</span>
-                </div>
-              </div>
-            ` : ''}
-          </td>
-        </tr>
-      `;
-    }
-
-    rowsHtml += `
-      <tr class="${isClosed ? 'closed' : ''}">
-        <td style="text-align:center;font-weight:700;color:var(--slate-700)">#${c.no}</td>
-        <td>
-          <b style="color:var(--navy-850);font-size:13px">${c.vendor}</b>
-          ${c.contractNo && c.contractNo !== 'Non' ? `<div style="font-size:11px;color:var(--slate-400)">สัญญา: ${c.contractNo}</div>` : ''}
-        </td>
-        <td>
-          <span style="color:var(--slate-800);font-weight:600;font-size:13px">${c.work}</span>
-          ${c.po ? `<div style="font-size:11px;color:var(--slate-400)">PO: ${c.po}</div>` : ''}
-        </td>
-        <td class="money-cell" style="font-weight:700">${fmt(c.value)}</td>
-        <td class="money-cell" style="color:var(--emerald-700);font-weight:700">${fmt(c.paid)}</td>
-        <td class="money-cell" style="color:var(--amber-700);font-weight:700">${fmt(c.billed)}</td>
-        <td class="money-cell" style="color:var(--rose-700);font-weight:700">${fmt(c.unbilled)}</td>
-        <td style="min-width:110px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;font-size:12px">
-            <b>${pct.toFixed(1)}%</b>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill" style="width:${pct}%"></div>
-          </div>
-        </td>
-        <td style="font-size:12px;text-align:center">
-          ${isClosed 
-            ? `<span class="status-pill paid" style="padding:3px 10px">Close</span>` 
-            : `<span class="status-pill open" style="padding:3px 10px">Open</span>`}
-        </td>
-      </tr>
-    `;
-  });
-
-  if (list.length === 0) {
-    rowsHtml = `<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--slate-400)">ไม่พบสัญญาที่ตรงกับเงื่อนไขการค้นหา</td></tr>`;
-  }
-
-  container.innerHTML = `
-    <div class="table-responsive">
-      <table class="luxury-table" style="font-size:12.5px">
-        <thead>
-          <tr>
-            <th style="width:50px;text-align:center">ลำดับ</th>
-            <th style="min-width:180px">ผู้รับเหมา (Vendor)</th>
-            <th style="min-width:200px">งาน / เงื่อนไขชำระเงิน</th>
-            <th style="text-align:right;min-width:115px">มูลค่า (บาท)</th>
-            <th style="text-align:right;min-width:115px">จ่ายเงินแล้ว</th>
-            <th style="text-align:right;min-width:115px">วางบิลแล้ว</th>
-            <th style="text-align:right;min-width:115px">ยังไม่วางบิล</th>
-            <th style="min-width:95px;text-align:center">% เบิกจ่าย</th>
-            <th style="min-width:130px">สถานะ / หมายเหตุ</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-        <tfoot>
-          <tr style="background:#0f172a;color:#ffffff;font-weight:700">
-            <td colspan="3" style="padding:14px 16px;font-size:13.5px;color:#ffffff">รวม (${list.length} สัญญา)</td>
-            <td class="money-cell" style="color:#ffffff;text-align:right">${fmt(subTotal)}</td>
-            <td class="money-cell" style="color:#34d399;text-align:right">${fmt(subPaid)}</td>
-            <td class="money-cell" style="color:#fbbf24;text-align:right">${fmt(subBilled)}</td>
-            <td class="money-cell" style="color:#f87171;text-align:right">${fmt(subUnbilled)}</td>
-            <td style="text-align:center;color:#ffffff">${subPct}%</td>
-            <td style="color:#cbd5e1;font-size:12px">สรุปตามเอกสารต้นฉบับ</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  `;
-}
-
-function renderContractorDirectoryBody() {
+function renderContractorDirectory() {
   const container = document.getElementById('contractorDirectoryWrap');
   if (!container) return;
 
@@ -1410,15 +1199,12 @@ function renderContractorDirectoryBody() {
     ...rawContracts.map(c => c.vendor)
   ])].filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'));
 
-  const query = (contractFilterState.dbdSearch || '').toLowerCase().trim();
-  const region = contractFilterState.dbdRegion || 'all';
+  const query = (contractFilterState.search || '').toLowerCase().trim();
+  const region = contractFilterState.region || 'all';
 
   let list = allNames.map(name => {
     const canon = (typeof canonicalContractorName === 'function') ? canonicalContractorName(name) : name;
     const d = cInfo[name] || cInfo[canon] || [name, 'รอตรวจสอบเลขทะเบียน', 'รอตรวจสอบ', 'รอตรวจสอบ', 'ยังดำเนินกิจการอยู่', 'รอตรวจสอบ', 'งานบริการตามสัญญาโครงการ', ''];
-    const vContracts = rawContracts.filter(c => c.vendor === name || c.vendor === canon || (c.vendor && d[0] && d[0].includes(c.vendor)));
-    const totVal = vContracts.reduce((s, c) => s + (c.value || 0), 0);
-    const totPaid = vContracts.reduce((s, c) => s + (c.paid || 0), 0);
 
     const isPhuket = (d[2] || '').includes('ภูเก็ต');
     const isBkk = (d[2] || '').includes('กรุงเทพ') || (d[2] || '').includes('นนทบุรี') || (d[2] || '').includes('สมุทร');
@@ -1428,9 +1214,6 @@ function renderContractorDirectoryBody() {
       name,
       canon,
       d,
-      vContracts,
-      totVal,
-      totPaid,
       isPhuket,
       isBkk,
       isOther
@@ -1466,12 +1249,11 @@ function renderContractorDirectoryBody() {
   }
 
   const cardsHtml = list.map(item => {
-    const { name, d, vContracts, totVal } = item;
+    const { name, d } = item;
     const active = d[4] === 'ดำเนินกิจการ' || d[4] === 'ยังดำเนินกิจการอยู่';
     const legal = (d[0] || '').split(' · ');
     const title = legal.length > 1 ? legal[0] : name;
     const sub = legal.length > 1 ? legal.slice(1).join(' · ') : (d[0] !== name ? d[0] : '');
-    const safeName = name.replace(/'/g, "\\'");
 
     return `
       <div class="luxury-card dbd-card">
@@ -1482,22 +1264,13 @@ function renderContractorDirectoryBody() {
               <span class="status-pill ${active ? 'paid' : 'unbilled'}" style="font-size:11.5px;padding:3px 10px;font-weight:700">
                 ${active ? '● ยังดำเนินกิจการอยู่' : d[4]}
               </span>
-              ${vContracts.length > 0 ? `
-                <span style="font-size:11.5px;background:#e0f2fe;color:#0369a1;padding:3px 8px;border-radius:6px;font-weight:700">
-                  📋 ${vContracts.length} สัญญาโครงการ
-                </span>
-              ` : `
-                <span style="font-size:11.5px;background:#f1f5f9;color:#64748b;padding:3px 8px;border-radius:6px;font-weight:600">
-                  คู่ค้าโครงการ
-                </span>
-              `}
             </div>
             <h3 style="font-size:16px;color:var(--navy-850);margin:0 0 4px 0;font-weight:700;line-height:1.3">${title}</h3>
             ${sub ? `<div style="font-size:12px;color:var(--slate-500);font-weight:600">${sub}</div>` : ''}
           </div>
 
           <!-- DBD Info Table Grid -->
-          <div class="dbd-field-row" style="margin-bottom:16px">
+          <div class="dbd-field-row">
             <span style="color:var(--slate-500)">เลขทะเบียนนิติบุคคล:</span>
             <div style="display:flex;align-items:center;gap:6px">
               <b style="color:var(--navy-850);font-family:monospace;font-size:13.5px">${d[1]}</b>
@@ -1527,22 +1300,6 @@ function renderContractorDirectoryBody() {
             ` : ''}
           </div>
         </div>
-
-        <!-- Card Footer -->
-        <div style="border-top:1px solid var(--slate-100);padding-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div>
-            ${totVal > 0 ? `
-              <span style="font-size:12px;color:var(--slate-500)">มูลค่ารวมตามสัญญา: </span>
-              <b style="color:var(--navy-850);font-size:13px">${fmt(totVal)}</b>
-            ` : '<span style="font-size:12px;color:var(--slate-400)">ซัพพลายเออร์/คู่สัญญา</span>'}
-          </div>
-          ${vContracts.length > 0 ? `
-            <button type="button" class="btn-outline" style="padding:5px 12px;font-size:12px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px"
-              onclick="switchContractorTab('contracts', '${safeName}')">
-              📋 ดูสัญญา (${vContracts.length}) ↗
-            </button>
-          ` : ''}
-        </div>
       </div>
     `;
   }).join('');
@@ -1562,13 +1319,6 @@ function contractorContract() {
     ...rawContracts.map(c => c.vendor)
   ])].filter(Boolean);
 
-  const totVal = rawContracts.reduce((s, c) => s + (c.value || 0), 0);
-  const totPaid = rawContracts.reduce((s, c) => s + (c.paid || 0), 0);
-  const totBilled = rawContracts.reduce((s, c) => s + (c.billed || 0), 0);
-  const totUnbilled = rawContracts.reduce((s, c) => s + (c.unbilled || 0), 0);
-
-  const isTabContracts = contractFilterState.tab === 'contracts';
-
   // Count Phuket companies
   const phuketCount = allNames.filter(n => {
     const d = cInfo[n] || (typeof canonicalContractorName === 'function' ? cInfo[canonicalContractorName(n)] : null);
@@ -1577,178 +1327,82 @@ function contractorContract() {
 
   const html = `
     ${banner(
-      isTabContracts ? 'Contractor Contracts Register' : 'Contractor Directory & Profile (DBD)',
-      isTabContracts 
-        ? 'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา ' + rawContracts.length + ' สัญญา อ้างอิงเอกสารสรุปต้นฉบับและ Memo จัดจ้าง (มูลค่าไม่รวม VAT)'
-        : 'ข้อมูลทะเบียนนิติบุคคลและข้อมูลบริษัทผู้รับเหมาโครงการ ' + allNames.length + ' บริษัท อ้างอิงฐานข้อมูล DBD กรมพัฒนาธุรกิจการค้า',
-      `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div class="subtab-container">
-          <button id="tabBtnContracts" class="btn-subtab ${isTabContracts ? 'active' : ''}" onclick="switchContractorTab('contracts')">
-            📋 ทะเบียนสัญญา (${rawContracts.length} สัญญา)
-          </button>
-          <button id="tabBtnDirectory" class="btn-subtab ${!isTabContracts ? 'active' : ''}" onclick="switchContractorTab('directory')">
-            🏢 ข้อมูลนิติบุคคล DBD (${allNames.length} บริษัท)
-          </button>
-        </div>
-        <button class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer" onclick="syncPaymentFromGoogleSheet(true)">
-          🔄 สั่งซิงค์ Google Sheet
-        </button>
-      </div>`
+      'Contractor Directory & Profile (DBD)',
+      'ข้อมูลทะเบียนนิติบุคคลและข้อมูลบริษัทผู้รับเหมาโครงการ ' + allNames.length + ' บริษัท อ้างอิงฐานข้อมูล DBD กรมพัฒนาธุรกิจการค้า'
     )}
 
-    ${isTabContracts ? `
-      <!-- 4 KPI Cards for Contracts -->
-      <div class="kpi-grid" style="margin-bottom:20px">
-        <div class="luxury-card kpi-card">
-          <div class="kpi-label">
-            <span>Total Contract Value</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div class="kpi-value">${fmt(totVal)}</div>
-          <div class="kpi-subtext">รวม ${rawContracts.length} สัญญาตามต้นฉบับและ Memo</div>
+    <!-- 4 KPI Cards for DBD Directory -->
+    <div class="kpi-grid" style="margin-bottom:20px">
+      <div class="luxury-card kpi-card">
+        <div class="kpi-label">
+          <span>บริษัทคู่สัญญาโครงการ</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
         </div>
-
-        <div class="luxury-card kpi-card green">
-          <div class="kpi-label">
-            <span>จ่ายเงินแล้วสะสม (Total Paid)</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div class="kpi-value">${fmt(totPaid)}</div>
-          <div class="kpi-subtext positive">${totVal > 0 ? ((totPaid / totVal) * 100).toFixed(1) : '0.0'}% โอนชำระเงินเรียบร้อยแล้ว</div>
-        </div>
-
-        <div class="luxury-card kpi-card gold">
-          <div class="kpi-label">
-            <span>วางบิลแล้ว (ยังไม่จ่าย)</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div class="kpi-value">${fmt(totBilled)}</div>
-          <div class="kpi-subtext" style="color:var(--amber-700)">${totVal > 0 ? ((totBilled / totVal) * 100).toFixed(1) : '0.0'}% ส่งเอกสารวางบิลแล้ว รอจ่าย</div>
-        </div>
-
-        <div class="luxury-card kpi-card red">
-          <div class="kpi-label">
-            <span>ยังไม่วางบิล (Unbilled)</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
-          </div>
-          <div class="kpi-value">${fmt(totUnbilled)}</div>
-          <div class="kpi-subtext negative">${totVal > 0 ? ((totUnbilled / totVal) * 100).toFixed(1) : '0.0'}% คงเหลือตามงวดงานในสัญญา</div>
-        </div>
+        <div class="kpi-value">${allNames.length} บริษัท</div>
+        <div class="kpi-subtext positive">100% ตรวจสอบฐานข้อมูล DBD ครบถ้วน</div>
       </div>
 
-      <!-- Filter & Search Toolbar for Contracts -->
-      <div class="luxury-card" style="padding:16px 20px;margin-bottom:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <input type="text" id="contractSearch" class="form-input" placeholder="🔍 ค้นหาผู้รับเหมา / สัญญา / งาน..." 
-              value="${contractFilterState.search || ''}"
-              style="max-width:280px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"
-              oninput="setContractFilter('search', this.value)" />
-            
-            <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('status', this.value)">
-              <option value="all" ${contractFilterState.status === 'all' ? 'selected' : ''}>สถานะทั้งหมด (All Status)</option>
-              <option value="open" ${contractFilterState.status === 'open' ? 'selected' : ''}>กำลังดำเนินงาน (Open)</option>
-              <option value="close" ${contractFilterState.status === 'close' ? 'selected' : ''}>ปิดสัญญาแล้ว (Close)</option>
-            </select>
+      <div class="luxury-card kpi-card green">
+        <div class="kpi-label">
+          <span>สถานะนิติบุคคล (Active)</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="kpi-value">${allNames.length} / ${allNames.length}</div>
+        <div class="kpi-subtext positive">100% ยังดำเนินกิจการอยู่ทั้งหมด</div>
+      </div>
 
-            <select class="form-select" style="height:38px;font-size:13px" onchange="setContractFilter('sortBy', this.value)">
-              <option value="vendor" ${contractFilterState.sortBy === 'vendor' ? 'selected' : ''}>จัดกลุ่มตามผู้รับเหมา (ผรม. เรียงใกล้กัน)</option>
-              <option value="id" ${contractFilterState.sortBy === 'id' ? 'selected' : ''}>เรียงตามลำดับสัญญา (ลำดับ 1–${rawContracts.length})</option>
-            </select>
-          </div>
+      <div class="luxury-card kpi-card gold">
+        <div class="kpi-label">
+          <span>บริษัทในพื้นที่ภูเก็ต</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="kpi-value">${phuketCount} บริษัท</div>
+        <div class="kpi-subtext" style="color:var(--amber-700)">สัดส่วนผู้รับเหมาและคู่ค้าท้องถิ่น ${((phuketCount/allNames.length)*100).toFixed(0)}%</div>
+      </div>
 
-          <div style="font-size:13px;color:var(--slate-500)">
-            อ้างอิงเอกสาร: <b>รายงานการวางบิล_โครงการโรงเรียนนานาชาติภูเก็ต</b>
+      <div class="luxury-card kpi-card">
+        <div class="kpi-label">
+          <span>ทุนจดทะเบียนรวม</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+        </div>
+        <div class="kpi-value">> ฿8.7 แสนล้าน</div>
+        <div class="kpi-subtext positive">รวมบริษัทชั้นนำระดับประเทศและท้องถิ่น</div>
+      </div>
+    </div>
+
+    <!-- Filter Toolbar for DBD Directory -->
+    <div class="luxury-card" style="padding:16px 20px;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="dbdSearch" class="form-input" placeholder="🔍 ค้นหาชื่อบริษัท / เลขทะเบียน 13 หลัก / ที่ตั้ง / หมวดธุรกิจ..." 
+            value="${contractFilterState.search || ''}"
+            style="min-width:320px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"
+            oninput="setContractFilter('search', this.value)" />
+
+          <div style="display:flex;gap:6px;align-items:center">
+            <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.region === 'all' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.region === 'all' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('region', 'all')">
+              ทั้งหมด (${allNames.length})
+            </button>
+            <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.region === 'phuket' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.region === 'phuket' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('region', 'phuket')">
+              📍 จ.ภูเก็ต (${phuketCount})
+            </button>
+            <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.region === 'bkk' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.region === 'bkk' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('region', 'bkk')">
+              🏢 กทม. & ปริมณฑล (7)
+            </button>
+            <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.region === 'other' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.region === 'other' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('region', 'other')">
+              🌏 อื่นๆ (1)
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Table Container -->
-      <div class="luxury-card" style="padding:0;overflow:hidden">
-        <div id="contractorContractsWrap"></div>
-      </div>
-    ` : `
-      <!-- 4 KPI Cards for DBD Directory -->
-      <div class="kpi-grid" style="margin-bottom:20px">
-        <div class="luxury-card kpi-card">
-          <div class="kpi-label">
-            <span>บริษัทคู่สัญญาโครงการ</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-          </div>
-          <div class="kpi-value">${allNames.length} บริษัท</div>
-          <div class="kpi-subtext positive">100% ตรวจสอบฐานข้อมูล DBD ครบถ้วน</div>
-        </div>
-
-        <div class="luxury-card kpi-card green">
-          <div class="kpi-label">
-            <span>สถานะนิติบุคคล (Active)</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div class="kpi-value">${allNames.length} / ${allNames.length}</div>
-          <div class="kpi-subtext positive">100% ยังดำเนินกิจการอยู่ทั้งหมด</div>
-        </div>
-
-        <div class="luxury-card kpi-card gold">
-          <div class="kpi-label">
-            <span>บริษัทในพื้นที่ภูเก็ต</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          </div>
-          <div class="kpi-value">${phuketCount} บริษัท</div>
-          <div class="kpi-subtext" style="color:var(--amber-700)">สัดส่วนผู้รับเหมาและคู่ค้าท้องถิ่น ${((phuketCount/allNames.length)*100).toFixed(0)}%</div>
-        </div>
-
-        <div class="luxury-card kpi-card">
-          <div class="kpi-label">
-            <span>ทุนจดทะเบียนรวม</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
-          </div>
-          <div class="kpi-value">> ฿8.7 แสนล้าน</div>
-          <div class="kpi-subtext positive">รวมบริษัทชั้นนำระดับประเทศและท้องถิ่น</div>
-        </div>
-      </div>
-
-      <!-- Filter Toolbar for DBD Directory -->
-      <div class="luxury-card" style="padding:16px 20px;margin-bottom:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <input type="text" id="dbdSearch" class="form-input" placeholder="🔍 ค้นหาชื่อบริษัท / เลขทะเบียน 13 หลัก / ที่ตั้ง / งาน..." 
-              value="${contractFilterState.dbdSearch || ''}"
-              style="min-width:320px;height:38px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"
-              oninput="setContractFilter('dbdSearch', this.value)" />
-
-            <div style="display:flex;gap:6px;align-items:center">
-              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'all' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'all' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'all')">
-                ทั้งหมด (${allNames.length})
-              </button>
-              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'phuket' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'phuket' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'phuket')">
-                📍 จ.ภูเก็ต (${phuketCount})
-              </button>
-              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'bkk' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'bkk' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'bkk')">
-                🏢 กทม. & ปริมณฑล (7)
-              </button>
-              <button type="button" class="btn-xs" style="padding:6px 12px;border-radius:6px;cursor:pointer;border:1px solid #cbd5e1;background:${contractFilterState.dbdRegion === 'other' ? 'var(--navy-850)' : '#fff'};color:${contractFilterState.dbdRegion === 'other' ? '#fff' : 'var(--slate-700)'}" onclick="setContractFilter('dbdRegion', 'other')">
-                🌏 อื่นๆ (1)
-              </button>
-            </div>
-          </div>
-
-          <button type="button" class="btn-outline" style="padding:6px 12px;font-size:12.5px;border-radius:6px;cursor:pointer" onclick="switchContractorTab('contracts')">
-            📋 สลับไปดูทะเบียนสัญญา (${rawContracts.length}) ↗
-          </button>
-        </div>
-      </div>
-
-      <!-- Directory Cards Grid Container -->
-      <div id="contractorDirectoryWrap"></div>
-    `}
+    <!-- Directory Cards Grid Container -->
+    <div id="contractorDirectoryWrap"></div>
   `;
 
   document.getElementById('screen').innerHTML = html;
-  if (isTabContracts) {
-    renderContractorContractsBody();
-  } else {
-    renderContractorDirectoryBody();
-  }
+  renderContractorDirectory();
 }
 
 
@@ -3228,6 +2882,13 @@ function show(pageName) {
   const sidebar = document.getElementById('sidebar');
   if (sidebar) sidebar.classList.remove('open');
 
+  const slug = pageName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, '', '#' + slug);
+  } else {
+    window.location.hash = slug;
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   switch (pageName) {
@@ -3266,5 +2927,32 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
   initNav();
   updateSyncUI();
-  dashboard();
+
+  // Route by hash if present
+  const hash = (window.location.hash || '').replace('#', '').toLowerCase();
+  const pageMap = {
+    'contractor-contract': 'Contractor Contract',
+    'contractorcontract': 'Contractor Contract',
+    'contractor': 'Contractor Contract',
+    'dbd': 'Contractor Contract',
+    'payment': 'Payment',
+    's-curve': 'S-Curve',
+    'scurve': 'S-Curve',
+    'manpower': 'Manpower',
+    'contractor-progress': 'Contractor Progress',
+    'cost-summary': 'Cost Summary',
+    'cost': 'Cost Summary',
+    'meeting': 'Meeting',
+    'action-tracker': 'Action Tracker',
+    'monthly-report': 'Monthly Report',
+    'punch-list': 'Punch List',
+    'punch': 'Punch List',
+    'executive-dashboard': 'Executive Dashboard'
+  };
+
+  if (hash && pageMap[hash]) {
+    show(pageMap[hash]);
+  } else {
+    dashboard();
+  }
 });
