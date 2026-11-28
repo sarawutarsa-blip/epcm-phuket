@@ -915,6 +915,14 @@ body {
 .leader-kreng { background: #f3e8ff; color: #7e22ce; }
 
 /* Subtab & DBD Directory Styles */
+.subtab-container {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  gap: 3px;
+}
 .btn-subtab {
   padding: 6px 14px;
   font-size: 13px;
@@ -922,7 +930,7 @@ body {
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: #ffffff;
+  color: var(--slate-600);
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -931,13 +939,13 @@ body {
   white-space: nowrap;
 }
 .btn-subtab:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  background: #e2e8f0;
+  color: var(--navy-850);
 }
 .btn-subtab.active {
-  background: #ffffff;
-  color: var(--navy-850);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  background: var(--navy-850);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);
   font-weight: 700;
 }
 .btn-dbd-pill {

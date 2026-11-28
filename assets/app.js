@@ -1267,18 +1267,60 @@ function renderContractorContractsBody() {
       const vItems = rawContracts.filter(x => x.vendor === c.vendor);
       const vTotal = vItems.reduce((s, x) => s + x.value, 0);
       const safeVendor = (c.vendor || '').replace(/'/g, "\\'");
+      const cInfo = (typeof companyInfo !== 'undefined') ? companyInfo : {};
+      const canon = (typeof canonicalContractorName === 'function') ? canonicalContractorName(c.vendor) : c.vendor;
+      const d = cInfo[c.vendor] || cInfo[canon] || null;
+      let legalSub = '';
+      if (d && d[0]) {
+        const parts = d[0].split(' · ');
+        legalSub = parts.length > 1 ? parts[1] : (d[0] !== c.vendor ? d[0] : '');
+      }
+
       rowsHtml += `
-        <tr class="vendor-sub-header" style="background:#f1f5f9;border-top:2px solid #cbd5e1;font-weight:700">
-          <td colspan="9" style="padding:10px 16px">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <div style="display:flex;align-items:center;gap:10px">
-                <span style="color:var(--navy-850);font-size:13.5px">🏢 ${c.vendor}</span>
-                <button type="button" class="btn-dbd-pill" onclick="switchContractorTab('directory', '${safeVendor}')" title="คลิกเพื่อดูข้อมูลจดทะเบียน DBD ของบริษัทนี้">
-                  🏢 ดูข้อมูลทะเบียน DBD ↗
+        <tr class="vendor-sub-header" style="background:#f8fafc;border-top:3px solid #cbd5e1;border-bottom:1px solid #cbd5e1">
+          <td colspan="9" style="padding:14px 18px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+              <div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:15px;font-weight:700;color:var(--navy-850)">🏢 ${c.vendor}</span>
+                  ${legalSub ? `<span style="font-size:12px;color:var(--slate-500);font-weight:600">(${legalSub})</span>` : ''}
+                  <span class="status-pill paid" style="font-size:11px;padding:2px 8px;font-weight:700">● ยังดำเนินกิจการอยู่</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--slate-700);font-weight:700;background:#e2e8f0;padding:4px 10px;border-radius:6px">
+                  ${vItems.length} สัญญา · มูลค่ารวม ${fmt(vTotal)}
+                </span>
+                <button type="button" class="btn-dbd-pill" onclick="switchContractorTab('directory', '${safeVendor}')" title="เปิดดูการ์ด DBD เต็มรูปแบบ">
+                  ข้อมูล DBD เต็ม ↗
                 </button>
               </div>
-              <span style="font-size:12px;color:var(--slate-500);font-weight:600">${vItems.length} สัญญา · มูลค่ารวม ${fmt(vTotal)}</span>
             </div>
+
+            ${d ? `
+              <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:6px 16px;font-size:12px;color:var(--slate-600);margin-top:6px">
+                <div>
+                  <span style="color:var(--slate-400)">เลขทะเบียนนิติบุคคล:</span>
+                  <b style="color:var(--navy-850);font-family:monospace;font-size:12.5px;margin-left:4px">${d[1]}</b>
+                </div>
+                <div>
+                  <span style="color:var(--slate-400)">ทุนจดทะเบียน:</span>
+                  <b style="color:var(--emerald-700);margin-left:4px">${d[3]}</b>
+                </div>
+                <div>
+                  <span style="color:var(--slate-400)">วันที่จดทะเบียน:</span>
+                  <span style="color:var(--slate-700);margin-left:4px">${d[5] || '-'}</span>
+                </div>
+                <div style="grid-column:1 / -1;display:flex;align-items:flex-start;gap:6px">
+                  <span style="color:var(--slate-400);white-space:nowrap">ที่ตั้งสำนักงาน:</span>
+                  <span style="color:var(--slate-700)">${d[2]}</span>
+                </div>
+                <div style="grid-column:1 / -1;display:flex;align-items:flex-start;gap:6px">
+                  <span style="color:var(--slate-400);white-space:nowrap">หมวดธุรกิจ:</span>
+                  <span style="color:var(--slate-600)">${d[6] || '-'}</span>
+                </div>
+              </div>
+            ` : ''}
           </td>
         </tr>
       `;
@@ -1540,7 +1582,7 @@ function contractorContract() {
         ? 'ทะเบียนสัญญาหลักรายบริษัทผู้รับเหมา ' + rawContracts.length + ' สัญญา อ้างอิงเอกสารสรุปต้นฉบับและ Memo จัดจ้าง (มูลค่าไม่รวม VAT)'
         : 'ข้อมูลทะเบียนนิติบุคคลและข้อมูลบริษัทผู้รับเหมาโครงการ ' + allNames.length + ' บริษัท อ้างอิงฐานข้อมูล DBD กรมพัฒนาธุรกิจการค้า',
       `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="display:inline-flex;background:rgba(255,255,255,0.18);padding:3px;border-radius:8px;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.25)">
+        <div class="subtab-container">
           <button id="tabBtnContracts" class="btn-subtab ${isTabContracts ? 'active' : ''}" onclick="switchContractorTab('contracts')">
             📋 ทะเบียนสัญญา (${rawContracts.length} สัญญา)
           </button>
